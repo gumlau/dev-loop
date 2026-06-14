@@ -41,6 +41,24 @@ project/team, and the active `mode` (`live` vs `dry-run`). In `dry-run` you make
 
 ## 1. Do these three jobs, in this order
 
+### Preflight — gate the feature sweep on change
+Jobs A and B are cheap Linear queries — always run them. Job C (re-reading the
+strategy doc, exercising the whole product, hunting gaps) is the expensive part, so
+don't re-run it against a product that hasn't moved — a short-interval loop will
+otherwise re-explore an unchanged build and re-report "nothing to file" forever:
+- Keep a small `pm-state.json` **next to the `projects.json` you loaded**, holding
+  per-project the repo SHA you last explored for gaps and when.
+- Each run, compute `git -C <repoPath> rev-parse HEAD`. If **Job A and Job B are
+  both empty** AND `HEAD` is unchanged since that SHA, the product surface hasn't
+  moved and your backlog already reflects it: skip Job C, report a one-line no-op
+  ("no In Review/blocked work; HEAD unchanged at `<sha>` — nothing new to propose"),
+  and stop.
+- Otherwise run Job C. A **new SHA means the product moved** — diff what changed
+  (`git -C <repoPath> log --oneline <lastSha>..HEAD`, `git diff --stat`), since
+  shipped work may close existing gaps or open new ones. After exploring, record the
+  **SHA you actually explored** (not end-of-run `HEAD`, which can move mid-run while a
+  parallel Dev ships) so an unevaluated commit re-surfaces next run.
+
 ### Job A — Verify In Review items you own (clear the finish line first)
 Dev's finished work is the most valuable thing to move. Query:
 `project` + `label:"dev-loop"` + `label:"pm"` + `state:"In Review"` — this covers

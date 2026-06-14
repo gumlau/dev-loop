@@ -84,7 +84,7 @@ project exists. See `references/conventions.md` §13.
 
 ## Status
 
-v0.1.1 — validated end-to-end in an isolated sandbox (one full PM→Dev→QA cycle:
+v0.1.2 — validated end-to-end in an isolated sandbox (one full PM→Dev→QA cycle:
 priority pick order, claim, block, per-run cap, verify→Done, cancel, propose+dedupe,
 re-test+dedupe all exercised). Autonomy (push/deploy) is opt-in per project via
 config and gated on green build/test.
@@ -95,3 +95,9 @@ experience): dedupe against the *current product*, not just tickets (conventions
 instead of rebuilding; PM/QA may legitimately file zero in a run and stay in their
 lane (defects → QA, capability gaps → PM, business/infra-blocked items → the user)
 rather than padding the backlog.
+
+**0.1.2** — added a PM change-gate preflight (mirrors QA's): when In Review + blocked
+are both empty and the repo HEAD is unchanged, PM skips the expensive product sweep
+and reports a one-line no-op instead of re-exploring an unchanged build every fire.
+Records the explored SHA (not end-of-run HEAD) so a commit shipped mid-run isn't
+skipped.

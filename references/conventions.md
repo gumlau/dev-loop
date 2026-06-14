@@ -323,6 +323,16 @@ Always confirm the active `mode` in the run's opening summary. Use `dry-run` for
 first contact with a new project and for all skill-eval runs, so testing never
 mutates real Linear or ships real code.
 
+**Mid-run overrides.** If the user explicitly asks for live behavior while config
+says `dry-run` (e.g. "actually move the ticket", "merge and deploy"), treat it as
+an explicit, session-scoped override — honor it, and offer to persist `mode:
+"live"` to `projects.json` so a recurring/looped run stays consistent. Because
+crossing from `dry-run` to `live` unlocks irreversible, outward-facing actions
+(commits to `defaultBranch`, pushes, and especially a **production deploy** that
+may then run on every loop tick), confirm the blast radius **once** before the
+first such action — then proceed hands-off per the autonomy the user granted.
+Don't re-confirm every ticket once authorized.
+
 ---
 
 ## 13. First-run setup

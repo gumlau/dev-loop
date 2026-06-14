@@ -60,8 +60,16 @@ swept (a 5-minute loop will otherwise re-probe an unchanged product forever):
   moved: skip Job C, report a one-line no-op ("no In Review/blocked work; HEAD
   unchanged at `<sha>` — nothing new to test"), and stop.
 - Otherwise run Job C. A **new SHA means regression risk** — focus the sweep on
-  what those commits touched (`git diff --stat <lastSweptSha>..HEAD`). After a full
-  sweep, write the current `HEAD` back to `qa-state.json`.
+  what those commits touched (`git diff --stat <lastSweptSha>..HEAD`). After
+  verifying, record the **SHA you actually swept** — NOT end-of-run `HEAD`, which
+  can move mid-run while you test. Leaving the marker behind re-surfaces any commit
+  you haven't finished verifying (so nothing is silently skipped).
+- **Catch self-closed `qa` bugs.** Dev (or the loop) may move a `qa` bug
+  `In Review → Done` in seconds — faster than your poll — so Job A never sees it at
+  `In Review`. Don't let that skip verification: if a `qa` bug is `Done` but its fix
+  commit is newer than your marker, verify the *deployed* fix anyway (Job-A style:
+  repro + neighbourhood), leave a QA sign-off comment, and **reopen to `Todo`** if
+  it fails. The held marker is what guarantees you still catch it.
 
 ### Job A — Re-test In Review bugs (confirm fixes first)
 Query `project` + `label:"dev-loop"` + `label:"qa"` + `state:"In Review"`.

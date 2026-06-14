@@ -80,6 +80,19 @@ fails: fix it, or if you can't, revert your change and **block** the ticket with
 the failure output. **Never push or deploy a red build.** A broken `defaultBranch`
 blocks every other agent — protect it.
 
+Two gate traps that silently *under*-test — don't be fooled by a fast green:
+- **A glob test command may run only the first file.** `tsx tests/*.test.ts`
+  (and bare `node`) treat extra args as `argv`, not entry points — the shell glob
+  expands, the runner executes *one* file and exits 0. Verify the command really
+  runs the whole intended suite; if it can't, iterate file-by-file. A green gate
+  that ran 1 of N tests is worse than no gate.
+- **Don't run prod-mutating tests as a gate.** Some suites hit live infra (e.g.
+  files importing the real DB client / a prod `DATABASE_URL`, or that call out to
+  prod APIs). Running them as a gate can read or **mutate production**. Run the
+  safe subset (pure/unit, or against a disposable test env) plus the regression
+  test you added, and **report exactly which tests you skipped and why** — never
+  silently pass off a partial run as full coverage.
+
 ### Step 6 — Ship (per config)
 Only after green gates:
 - If `git.autoCommit`: make sure you're on `git.defaultBranch` first; if that
@@ -89,7 +102,11 @@ Only after green gates:
   conventions and co-author trailer rules.
 - If `git.autoPush`: push.
 - If `git.autoDeploy` and `deploy.command` is set: run it, and confirm it
-  succeeded before moving on.
+  succeeded before moving on. **The first time a run would deploy to production —
+  and any time you're overriding the configured `mode` mid-run (conventions §12) —
+  confirm the blast radius with the user before that first irreversible deploy,
+  unless they've already authorized hands-off shipping this session.** Once
+  authorized, proceed per config without re-asking on every ticket.
 If any of these is `false`, stop at that step and note it in the report (a human
 will take it from there).
 
