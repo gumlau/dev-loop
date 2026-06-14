@@ -84,7 +84,7 @@ project exists. See `references/conventions.md` §13.
 
 ## Status
 
-v0.1.2 — validated end-to-end in an isolated sandbox (one full PM→Dev→QA cycle:
+v0.1.3 — validated end-to-end in an isolated sandbox (one full PM→Dev→QA cycle:
 priority pick order, claim, block, per-run cap, verify→Done, cancel, propose+dedupe,
 re-test+dedupe all exercised). Autonomy (push/deploy) is opt-in per project via
 config and gated on green build/test.
@@ -101,3 +101,11 @@ are both empty and the repo HEAD is unchanged, PM skips the expensive product sw
 and reports a one-line no-op instead of re-exploring an unchanged build every fire.
 Records the explored SHA (not end-of-run HEAD) so a commit shipped mid-run isn't
 skipped.
+
+**0.1.3** — PM Job B now *actually unblocks*: when Dev blocks a ticket on a question
+or a design/scoping decision PM can answer, PM answers it **and** removes
+`blocked`/`needs-pm` (encoding any safety as acceptance criteria — e.g.
+build-behind-a-flag-off-by-default) so Dev can proceed. Escalate to the user only
+for genuinely human-only calls (irreversible prod ops, money, legal, security
+sign-off). Supplying the info **is** the resolution; "answered but left blocked" is
+not.

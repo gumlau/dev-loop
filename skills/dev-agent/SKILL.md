@@ -74,6 +74,17 @@ repo's own CLAUDE.md / style). Make the smallest change that satisfies **all**
 acceptance criteria. Cover the change with a test when the repo supports it
 (e.g. a regression test for a bug — that's how the owner's re-test will pass).
 
+**Too big, or a part the gates can't verify? Split it.** If a ticket is too large
+to ship safely in one pass — or its riskiest part can't be checked by
+typecheck/build/test (e.g. a signup-funnel or other critical UI flow that only a
+human/visual QA can confirm) — ship the foundational, low-risk, *testable* slice
+now and file follow-up ticket(s) for the deferred slice(s): create them with the
+same type/owner labels + `dev-loop`, `relatedTo` the original, in `Todo`, with
+crisp ACs. Note in the original's handoff exactly which ACs you satisfied vs.
+moved. A correct slice shipped + a clear follow-up beats a giant half-built
+deploy. (Still *block* — don't split — when the ticket is **unclear**; splitting
+is for clear-but-large.)
+
 ### Step 5 — Gate before shipping
 Run the project's `build` commands (`typecheck`, `build`, `test`) in order. If any
 fails: fix it, or if you can't, revert your change and **block** the ticket with

@@ -85,10 +85,27 @@ For each (oldest first):
    **Still broken / regressed** → `state:"Todo"`, comment the still-failing repro
    and any new symptom. (Verify-fail is first-class — never leave it In Review.)
 
-### Job B — Unblock your blocked bugs
-Query `label:"dev-loop"` + `label:"qa"` + `label:"blocked"`. Read Dev's comment;
-either **resolve** (add the missing repro/info, remove `blocked` + `needs-qa`,
-leave in `Todo`) or **cancel** (`Canceled`/`Duplicate` with a reason). See §9.
+### Job B — Unblock work Dev is waiting on for information
+First query your own: `label:"dev-loop"` + `label:"qa"` + `label:"blocked"`. Then
+**widen to every `label:"dev-loop"` + `label:"blocked"` ticket** and read Dev's
+latest comment. When Dev (or PM) blocked a ticket because it **needs more
+information** — an unclear or re-requested repro, missing reproduction steps, an
+ambiguous expected-vs-actual, a test account or seed data — *supplying that is
+QA's job even when the ticket isn't tagged `needs-qa`*. A blocked ticket nobody
+can pick up is the loop's most expensive stall, so clearing info-blocks is high
+value. For each, do exactly one of:
+- **Resolve** (the common, valuable case) — you can supply the missing facts: add
+  the repro / info / concrete expected behaviour, remove `blocked` (+ `needs-qa`),
+  leave in `Todo` so Dev can pick it up.
+- **Cancel** — it's invalid / duplicate / obsolete: `Canceled`/`Duplicate` with a
+  reason (conventions §9).
+- **Leave parked + escalate** — it's blocked on a *decision or human action*, not
+  on information you can provide: a product/scope call → PM; a destructive prod/ops
+  run or a security greenlight → the user. **Do not fake-unblock it** — pushing a
+  human-gated or destructive task back into Dev's auto-pick set is harmful. If it
+  isn't already triaged, comment why it's parked and who it's waiting on; then
+  surface it in your report. *Telling an information-block (yours to clear) apart
+  from a decision-block (not yours) is the core judgement of this job.*
 
 ### Job C — Hunt new bugs (happy paths + edge cases)
 1. Decide *what* to test from evidence, not vibes: read recent `dev-loop` tickets

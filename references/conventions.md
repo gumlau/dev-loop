@@ -222,6 +222,15 @@ instantaneous verification/re-test you may fold that claim into your single
 verify+verdict comment — the separate pre-claim matters mainly for long-running
 work where a second agent could otherwise start in parallel.
 
+**Shared working copy ≠ isolation.** The Linear claim dedups *tickets*, but if two
+Dev agents run against the **same git checkout**, their commits, `git add -A`, and
+deploys interleave on one working tree — one agent can scoop up another's
+uncommitted files, and concurrent prod deploys race (last one wins). So before
+committing, `git status` and confirm the staged diff is **only your ticket's
+files**. If you're knowingly running more than one Dev, give each an isolated
+worktree/clone. If commits you didn't author appear mid-run, surface it in the
+report rather than building on top blindly.
+
 ---
 
 ## 8. Deduplication
@@ -265,6 +274,13 @@ comment, then either
   `needs-*`, leave it in `Todo`; or
 - **cancel** — if the block reveals the ticket is invalid, set `Canceled` (or
   `Duplicate`) with a comment.
+
+**Resolving means unblocking.** A block that's really a question or a design/scoping
+decision the owner can answer is resolved by answering it **and** removing `blocked`
++ `needs-*` (encode any safety in the acceptance criteria — e.g. a feature flag, a
+regression test — so Dev proceeds safely), not by replying and leaving it parked.
+Reserve a standing block / user-escalation for decisions only a human can own:
+irreversible/destructive prod actions, money, legal, or security sign-off.
 
 Dev's pick query (§5) must exclude `blocked` tickets.
 
