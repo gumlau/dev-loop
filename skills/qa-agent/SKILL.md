@@ -27,9 +27,18 @@ they override this file on conflict:
 
 Then load config (§11): read `${CLAUDE_PLUGIN_DATA}/projects.json`,
 pick the project, and load `linearProject`, `linearTeam`, `repoPath`, `testEnv`,
-and `mode`. **If `testEnv` is missing or unclear, ask the user where to test
-before touching anything** — never run tests against an environment you're unsure
-of, and never against real prod unless config says so.
+and `mode`. If that path doesn't resolve (e.g. `${CLAUDE_PLUGIN_DATA}` expands to
+an empty/`-local` dir), fall back to `~/.claude/plugins/data/dev-loop/projects.json`
+or search `~/.claude/plugins/data/**/projects.json` before asking the user.
+**If `testEnv` is missing or unclear, ask the user where to test before touching
+anything** — never run tests against an environment you're unsure of, and never
+against real prod unless config says so.
+
+**Harness preflight.** Before testing, confirm your test tooling actually runs
+(e.g. the browser driver named in `testEnv.testCommand` is installed). If it's
+missing, run `testEnv.setup` once — or install it into a throwaway venv — rather
+than silently skipping tests because the harness isn't there. Offer to persist a
+working `testEnv.setup` to config so the next run is self-sufficient.
 
 **Open every run** with a one-line summary: project, Linear project/team, the
 test environment you'll use, and `mode` (`live` vs `dry-run`). In `dry-run`, make
@@ -39,6 +48,20 @@ no Linear mutations — print the bugs you *would* file.
 > `dev-loop`-labelled tickets (conventions §2).
 
 ## 1. Do these three jobs, in this order
+
+### Preflight — gate the deep sweep on change
+Jobs A and B are cheap Linear queries — always run them. Job C's full happy-path +
+edge-case battery is expensive, so don't re-run it against a build you've already
+swept (a 5-minute loop will otherwise re-probe an unchanged product forever):
+- Keep a small `qa-state.json` **next to the `projects.json` you loaded**, holding
+  per-project the repo SHA you last fully swept and when.
+- Each run, compute `git -C <repoPath> rev-parse HEAD`. If **Job A and Job B are
+  both empty** AND `HEAD` is unchanged since that SHA, the testable surface hasn't
+  moved: skip Job C, report a one-line no-op ("no In Review/blocked work; HEAD
+  unchanged at `<sha>` — nothing new to test"), and stop.
+- Otherwise run Job C. A **new SHA means regression risk** — focus the sweep on
+  what those commits touched (`git diff --stat <lastSweptSha>..HEAD`). After a full
+  sweep, write the current `HEAD` back to `qa-state.json`.
 
 ### Job A — Re-test In Review bugs (confirm fixes first)
 Query `project` + `label:"dev-loop"` + `label:"qa"` + `state:"In Review"`.
@@ -70,6 +93,21 @@ leave in `Todo`) or **cancel** (`Canceled`/`Duplicate` with a reason). See §9.
    (acting as the wrong role), pagination/limits, concurrent actions, network
    errors, mobile viewport, idempotency (double-submit), and surfaces that should
    *not* leak test/private data. Tag these bugs with `edge-case`.
+
+   High-yield patterns (probe the **API directly**, not just the UI):
+   - **Cross-role authz at the API**: call protected endpoints as the lowest-priv
+     persona (and as the wrong role). Page-level redirects can mask an endpoint
+     that skips its per-resolver owner check and returns another tenant's data —
+     and a query filtered by an `undefined` owner id often means *no* filter.
+   - **Protected-but-unguarded listings**: diff what an authed endpoint returns
+     against the public one. A missing `isTest`/visibility filter leaks hidden or
+     test records — a real leak even if the fields look "public".
+   - **Unsafe HTML sinks**: grep for `dangerouslySetInnerHTML` / `JSON.stringify`
+     into a `<script>`. User-controlled fields (name, bio, title) that aren't
+     escaped are stored XSS — demonstrate the breakout safely (no live payload on
+     shared prod; a local/throwaway repro is enough).
+   - **Ghost/empty IDs & IDOR**: a non-existent id should return `NOT_FOUND`/empty,
+     not a 500; acting on another owner's id should be denied.
 4. For each defect, **dedupe first** (conventions §8). Survivors become **Bug**
    tickets: the bug template (conventions §6) with a *real, minimal* repro,
    labels `dev-loop` + `Bug` + `qa` (+ `edge-case` if applicable), a `priority`
@@ -86,6 +124,14 @@ leave in `Todo`) or **cancel** (`Canceled`/`Duplicate` with a reason). See §9.
   prefer throwaway accounts, and clean up after destructive checks so you don't
   pollute another agent's or persona's data.
 - Respect `mode`: in `dry-run`, list intended bugs; make no writes.
+- **A clean run is a valid outcome.** If nothing changed and nothing reproduces,
+  file nothing and say so — never invent marginal or duplicate tickets to look
+  productive. A trustworthy board beats ticket count.
+- **Stay in your lane.** A *missing capability* (not a defect) is a Feature for PM —
+  note it for PM, don't file it as a Bug.
+- **Don't re-test an unchanged build.** Re-running already-green checks against
+  the same SHA burns cycles for zero signal (see the change-gate preflight). Spend
+  effort where the diff or the board actually moved.
 
 ## 3. Close with a report
 

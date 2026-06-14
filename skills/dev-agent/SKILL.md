@@ -27,7 +27,10 @@ blocked protocols, safety, config) — they override this file on conflict:
 
 Then load config (§11): read `${CLAUDE_PLUGIN_DATA}/projects.json`,
 pick the project, and load `linearProject`, `linearTeam`, `repoPath`,
-`strategyDoc`, `build`, `git`, `deploy`, and `mode`.
+`strategyDoc`, `build`, `git`, `deploy`, and `mode`. If that path doesn't resolve
+(e.g. `${CLAUDE_PLUGIN_DATA}` expands to an empty or `-local` dir), fall back to
+`~/.claude/plugins/data/dev-loop/projects.json` or search
+`~/.claude/plugins/data/**/projects.json` before asking the user.
 
 **Open every run** with a one-line summary: project, Linear project/team,
 `repoPath`, and `mode`. Also state the ship policy you'll follow from config
@@ -54,6 +57,12 @@ assigned to you / not In Progress, another Dev won the race — pick the next.
 ### Step 3 — Groom it
 - **Duplicate?** Search `dev-loop` tickets (§8). If it duplicates another, set
   `state:"Duplicate"`, set `duplicateOf`, comment, and pick the next ticket.
+- **Already done?** Before writing code, check whether the acceptance criteria are
+  *already satisfied* by current code (strategy docs and test plans go stale — PM/QA
+  may have filed something the product already does). If so, don't rebuild: comment
+  with the evidence (files / refs), move it straight to `In Review` for the owner to
+  verify, and pick the next ticket — or set `Duplicate`/`Canceled` if truly obsolete.
+  Re-implementing done work is waste.
 - **Enough info?** It needs clear, testable acceptance criteria and (for bugs) a
   real repro. If it's missing, contradictory, or under-specified — **block it**
   (conventions §9): add `blocked` + `needs-pm`(feature)/`needs-qa`(bug), unassign,

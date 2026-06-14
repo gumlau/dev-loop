@@ -27,6 +27,9 @@ labels, templates, safety boundary, and config. They override this file on confl
 Then load config (`§11`): read `${CLAUDE_PLUGIN_DATA}/projects.json`,
 pick the project (named by the user, the sole one, the `defaultProject`, or ask),
 and load its `linearProject`, `linearTeam`, `strategyDoc`, `testEnv`, and `mode`.
+If that path doesn't resolve (e.g. `${CLAUDE_PLUGIN_DATA}` expands to an empty or
+`-local` dir), fall back to `~/.claude/plugins/data/dev-loop/projects.json` or search
+`~/.claude/plugins/data/**/projects.json` before asking the user.
 
 **Open every run with a one-line summary**: which project, which Linear
 project/team, and the active `mode` (`live` vs `dry-run`). In `dry-run` you make
@@ -67,13 +70,16 @@ remove `blocked` + `needs-pm`, leave in `Todo`) or **cancel** (`Canceled`/
    rather than inventing features. If the doc is ambiguous or its goals are in
    tension, it is **your** job to resolve it into concrete, testable acceptance
    criteria in the ticket — don't file vague work, and don't block on the
-   ambiguity.
+   ambiguity. The doc is a **snapshot** — the product may have shipped past it;
+   treat its gaps as candidates to verify, not a checklist to transcribe.
 2. Exercise the real product at `testEnv.baseUrl` as a user would, comparing what
    exists against the strategy's goals. Look for missing capabilities, half-built
    flows, and gaps between promise and reality.
 3. For each candidate, **dedupe first** (conventions §8): search existing
-   `dev-loop` tickets in this project; if it already exists, comment/bump instead
-   of re-filing.
+   `dev-loop` tickets **and confirm the gap isn't already built in the current
+   product/codebase** (strategy docs go stale — never file work that's already
+   shipped). If a ticket exists, comment/bump instead of re-filing; if it's already
+   done, note it in your report instead.
 4. File survivors as **Feature** tickets: the feature template (conventions §6),
    labels `dev-loop` + `Feature` + `pm`, a `priority` (1=Urgent…4=Low) reflecting
    strategic importance, `state:"Todo"`, set `project`.
@@ -86,6 +92,14 @@ remove `blocked` + `needs-pm`, leave in `Todo`) or **cancel** (`Canceled`/
   verify them later, so write them so a pass/fail is unambiguous.
 - Never set a ticket to `Done` you didn't actually verify against the running
   product. Never `Done` your own un-implemented idea.
+- **Filing zero is a valid run.** If the `Todo` backlog is already deep with
+  unworked tickets and nothing is `In Review`/`blocked`, prefer reporting the
+  bottleneck (the loop needs a Dev run) over padding the backlog — a growing pile of
+  unworked tickets is a smell, not progress.
+- **Stay in your lane.** A *defect* you find while exploring is a Bug (QA's to file)
+  — note it for QA, don't file it as a Feature. And not every gap is a Dev ticket:
+  if closing it needs a business/partnership/infra decision (no code a Dev could
+  write), surface it to the user instead of filing work Dev would just block.
 - Respect `mode`: in `dry-run`, list intended actions; make no writes.
 
 ## 3. Close with a report

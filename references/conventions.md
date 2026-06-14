@@ -78,7 +78,7 @@ backlog. Treat it as load-bearing.
 
 ## 3. Linear state machine
 
-The Citronetic team has these workflow states (use the **name** with
+Your Linear team has these workflow states (Linear's defaults; use the **name** with
 `save_issue`'s `state` field): `Backlog`, `Todo`, `In Progress`, `In Review`,
 `Done`, `Canceled`, `Duplicate`. There is **no "Blocked" or "Processing" state** —
 "Processing" maps to `In Progress`, and "Blocked" is a label (§9), not a state.
@@ -233,6 +233,13 @@ Before **creating** any ticket, PM/QA must search for an existing one:
   create a new one** — add a comment with the new observation instead, or bump
   priority if more urgent.
 
+**Dedupe against reality, not just against tickets.** A capability can be *already
+built* in the product with no `dev-loop` ticket tracking it — and strategy docs and
+test plans are point-in-time snapshots that go stale as the product ships. Before
+filing, confirm the gap (or bug) still exists in the **current** product/codebase,
+not merely in the doc. Never file work that's already done; if it's done but
+unverified, that's a line in your report, not a new ticket.
+
 During **grooming**, if Dev finds the picked ticket duplicates another, set
 `state="Duplicate"`, set `duplicateOf` to the canonical ticket, comment, and move
 on. Never implement the same thing twice.
@@ -288,7 +295,10 @@ The agents are product-agnostic; everything product-specific lives in
 `${CLAUDE_PLUGIN_ROOT}/references/config-schema.md`, `${CLAUDE_PLUGIN_ROOT}/config/projects.example.json`).
 
 On startup each skill:
-1. Reads `projects.json`.
+1. Reads `projects.json`. If `${CLAUDE_PLUGIN_DATA}` resolves to an empty or
+   `-local` data dir (the install name and the data dir can differ), fall back to
+   `~/.claude/plugins/data/dev-loop/projects.json`, or search
+   `~/.claude/plugins/data/**/projects.json`, before asking the user.
 2. If the user named a project, uses it; if exactly one project is configured,
    uses it; otherwise asks which project to operate on.
 3. Loads that project's `linearProject`, `linearTeam`, `repoPath`,

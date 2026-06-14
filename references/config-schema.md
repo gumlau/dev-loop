@@ -19,7 +19,8 @@ ship/deploy settings. One file, many products.
 
       "testEnv": {                    // where QA + verification run
         "baseUrl":     "https://monpick.vercel.app",
-        "testCommand": "cd tests && python3 {suite}",  // {suite} filled per run; omit if N/A
+        "setup":       "python3 -m venv .venv && .venv/bin/pip install -q playwright && .venv/bin/playwright install chromium",  // one-time harness bootstrap; QA runs it if the tooling is missing (optional)
+        "testCommand": ".venv/bin/python3 tests/{suite}",  // {suite} filled per run; omit if N/A
         "notes":       "Personas: demo-creator@…/password123 (creator), demo-brand@… (brand)"
       },
 
@@ -50,6 +51,10 @@ ship/deploy settings. One file, many products.
 - **Required per project**: `linearTeam`, `linearProject`. `repoPath` is required
   for Dev; `strategyDoc` for PM; `testEnv` for QA. A skill prompts for any
   required field it's missing rather than guessing.
+- **`testEnv.setup`** (optional): a one-time command to bootstrap the test harness
+  (install the browser driver, create a venv, etc.). QA runs it when the tooling
+  named in `testCommand` is missing, so a fresh machine or a scheduled run isn't
+  blocked by an absent harness. Keep it idempotent.
 - **Autonomy** is expressed entirely through `git` + `deploy`. The fully-autonomous
   "push + deploy to prod" mode is `autoCommit/autoPush/autoDeploy: true` with a
   `deploy.command`. To put a human in the loop, set `autoPush`/`autoDeploy: false`.

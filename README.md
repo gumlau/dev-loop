@@ -84,7 +84,14 @@ project exists. See `references/conventions.md` §13.
 
 ## Status
 
-v0.1.0 — validated end-to-end in an isolated sandbox (one full PM→Dev→QA cycle:
+v0.1.1 — validated end-to-end in an isolated sandbox (one full PM→Dev→QA cycle:
 priority pick order, claim, block, per-run cap, verify→Done, cancel, propose+dedupe,
 re-test+dedupe all exercised). Autonomy (push/deploy) is opt-in per project via
 config and gated on green build/test.
+
+**0.1.1** — hardened against stale strategy docs / test plans (from live-loop
+experience): dedupe against the *current product*, not just tickets (conventions
+§8); Dev grooming now detects already-built tickets and routes them to `In Review`
+instead of rebuilding; PM/QA may legitimately file zero in a run and stay in their
+lane (defects → QA, capability gaps → PM, business/infra-blocked items → the user)
+rather than padding the backlog.
