@@ -100,9 +100,10 @@ For each (oldest first):
    and any new symptom. (Verify-fail is first-class — never leave it In Review.)
 
 ### Job B — Unblock work Dev is waiting on for information
-First query your own: `label:"dev-loop"` + `label:"qa"` + `label:"blocked"`. Then
-**widen to every `label:"dev-loop"` + `label:"blocked"` ticket** and read Dev's
-latest comment. When Dev (or PM) blocked a ticket because it **needs more
+First query your own: `project` + `label:"dev-loop"` + `label:"qa"` + `label:"blocked"`. Then
+**widen to every `project` + `label:"dev-loop"` + `label:"blocked"` ticket** and read Dev's
+latest comment. (Keep `project` in *both* queries — the widening is across owners
+within this project, never across projects; another project's backlog is off-limits, §2.) When Dev (or PM) blocked a ticket because it **needs more
 information** — an unclear or re-requested repro, missing reproduction steps, an
 ambiguous expected-vs-actual, a test account or seed data — *supplying that is
 QA's job even when the ticket isn't tagged `needs-qa`*. A blocked ticket nobody

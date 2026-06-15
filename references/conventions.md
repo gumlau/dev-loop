@@ -268,8 +268,10 @@ dependency, or a suspected-but-unconfirmed duplicate — it does **not** guess:
    unblock it.
 
 PM/QA, on each run, check for **their** blocked tickets
-(`label:"dev-loop"` + `label:"blocked"` + their owner label). For each: read the
-comment, then either
+(`project` + `label:"dev-loop"` + `label:"blocked"` + their owner label — always
+include `project`; an unscoped label query returns blocked tickets from *every*
+dev-loop project and you must never touch another project's backlog, §2). For each:
+read the comment, then either
 - **resolve** — add the missing info / fix the criteria, remove `blocked` +
   `needs-*`, leave it in `Todo`; or
 - **cancel** — if the block reveals the ticket is invalid, set `Canceled` (or

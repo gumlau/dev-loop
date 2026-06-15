@@ -77,8 +77,10 @@ For each (oldest first):
    leave it in In Review.)
 
 ### Job B — Unblock your blocked features
-Query `label:"dev-loop"` + `label:"pm"` + `label:"blocked"`. For each, read Dev's
-comment and either **resolve** (add the missing info / fix acceptance criteria,
+Query `project` + `label:"dev-loop"` + `label:"pm"` + `label:"blocked"` (always
+include `project` — an unscoped label query pulls blocked tickets from *every*
+dev-loop project, and another project's backlog is off-limits, §2). For each, read
+Dev's comment and either **resolve** (add the missing info / fix acceptance criteria,
 remove `blocked` + `needs-pm`, leave in `Todo`) or **cancel** (`Canceled`/
 `Duplicate` with a reason). See conventions §9.
 
@@ -86,7 +88,7 @@ remove `blocked` + `needs-pm`, leave in `Todo`) or **cancel** (`Canceled`/
 A ticket you previously **escalated** to the user can become resolvable out-of-band: the
 user grants the decision in a **comment**, or someone strips `blocked` but leaves a stale
 `needs-pm`. A `label:"blocked"` query then returns *empty* and you'd silently skip it. So
-each run also scan `label:"dev-loop"` + `label:"pm"` for **`needs-pm` tickets that no longer
+each run also scan `project` + `label:"dev-loop"` + `label:"pm"` for **`needs-pm` tickets that no longer
 carry `blocked`** (and re-read the latest comment on anything you parked last run). If the
 user has supplied the missing decision/authorization, the block is resolved — finish the
 job: clear the stale `needs-pm`, and act.

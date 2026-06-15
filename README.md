@@ -84,10 +84,20 @@ project exists. See `references/conventions.md` §13.
 
 ## Status
 
-v0.1.6 — validated end-to-end in an isolated sandbox (one full PM→Dev→QA cycle:
+v0.1.7 — validated end-to-end in an isolated sandbox (one full PM→Dev→QA cycle:
 priority pick order, claim, block, per-run cap, verify→Done, cancel, propose+dedupe,
 re-test+dedupe all exercised). Autonomy (push/deploy) is opt-in per project via
 config and gated on green build/test.
+
+**0.1.7** — project-scope every blocked/needs-* query template (from live experience).
+The Safety callouts always said "scope every query by `project`", and the In Review /
+Todo templates included it — but the PM Job-B (`blocked`, `needs-pm`) and QA Job-B
+(`blocked`, plus the cross-owner widen) templates omitted it. An agent transcribing
+them verbatim issued an **unscoped label query that returned another project's blocked
+tickets** (observed live: a MonPick PM run surfaced `dev-loop-sandbox` tickets), risking
+a touch on a backlog that's explicitly off-limits (§2). All five templates
+(`pm-agent` ×2, `qa-agent` ×2, `conventions` §9) now carry `project` with an inline
+"always include project" note.
 
 **0.1.6** — anti-stall escape hatch (from live experience): the "defects are QA's to
 file — note it, don't file" rule assumes QA actually runs. When a *confirmed,
