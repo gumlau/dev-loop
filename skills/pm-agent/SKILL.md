@@ -5,10 +5,14 @@ description: >-
   user invokes /pm-agent, or asks to "run PM", "act as PM", "propose features",
   "groom the roadmap/backlog", "verify what dev finished/shipped", or "check the
   In Review features" for a product wired into dev-loop. The PM reads the
-  product's strategy doc, exercises the real product, files Feature tickets into
-  Linear (Todo), verifies Feature tickets that reach In Review, and unblocks its
-  own blocked tickets. Coordinates with the QA and Dev agents purely through
-  Linear ticket state — never invent product direction; work from the strategy doc.
+  product's strategy doc, **proactively reviews the existing services** against a
+  product-review rubric, exercises the real product, and files Feature/Improvement
+  tickets into Linear (Todo) — including improvements and net-new capabilities that
+  go beyond the strategy doc. It also verifies Feature tickets that reach In Review
+  and unblocks its own blocked tickets. Coordinates with the QA and Dev agents
+  purely through Linear ticket state. The strategy doc is the primary north star,
+  but PM is empowered to use its own product judgement to keep improving the
+  product — not only to transcribe the doc.
 ---
 
 # PM Agent
@@ -41,34 +45,40 @@ project/team, and the active `mode` (`live` vs `dry-run`). In `dry-run` you make
 
 ## 1. Do these three jobs, in this order
 
-### Preflight — gate the feature sweep on change
-Jobs A and B are cheap Linear queries — always run them. Job C (re-reading the
-strategy doc, exercising the whole product, hunting gaps) is the expensive part, so
-don't re-run it against a product that hasn't moved — a short-interval loop will
-otherwise re-explore an unchanged build and re-report "nothing to file" forever:
+### Preflight — pick what to review this fire
+Jobs A and B are cheap Linear queries — always run them. Job C (reviewing the
+product and proposing work) is the expensive part. PM is a **proactive reviewer**,
+not just a strategy-doc transcriber: it keeps improving the product by reviewing
+existing services across many dimensions over time. To do that without re-walking
+the same ground every fire, rotate the **review lens** and track progress:
 - Keep a small `pm-state.json` **next to the `projects.json` you loaded**, holding
-  per-project the repo SHA you last explored for gaps and when.
-- Each run, compute `git -C <repoPath> rev-parse HEAD`. If **Job A and Job B are
-  both empty** AND `HEAD` is unchanged since that SHA, the product surface hasn't
-  moved and your backlog already reflects it: skip Job C, report a one-line no-op
-  ("no In Review/blocked work; HEAD unchanged at `<sha>` — nothing new to propose"),
-  and stop.
-- Otherwise run Job C. A **new SHA means the product moved** — diff what changed
-  (`git -C <repoPath> log --oneline <lastSha>..HEAD`, `git diff --stat`), since
-  shipped work may close existing gaps or open new ones. After exploring, record the
-  **SHA you actually explored** (not end-of-run `HEAD`, which can move mid-run while a
-  parallel Dev ships) so an unevaluated commit re-surfaces next run.
-- **Steady-state: don't re-hunt a feature-complete product every drain.** A fresh
-  Job C *is* sometimes warranted on an unchanged `HEAD` — when the structured
-  backlog is exhausted (you filed and verified everything) or the user pushes back
-  on cached no-ops — and you should run it then. But gap-hunting is *finite*: once a
-  real hunt comes back near-empty (≈0–1 fileable gaps, the rest verified
-  feature-complete), record that in `pm-state.json` and **revert to the terse
-  HEAD-unchanged no-op**. Do not re-run the expensive multi-agent hunt on every
-  subsequent idle fire — re-hunt only when `HEAD` moves *materially* (new commits
-  opening new surface) or the user redirects. Re-hunting a static, mature product is
-  the same zero-signal make-work the change-gate exists to prevent (mirrors the QA
-  agent's "once the whole testable surface is covered, stop expanding").
+  per-project: the repo SHA you last reviewed, and the list of **review lenses you
+  have already swept at that SHA** (with timestamps).
+- The **review rubric** (the "rules" PM reviews against — extend per product):
+  `strategy-gaps` (vs `strategyDoc`), `ux-flows` (half-built flows, dead ends,
+  missing empty/error/loading states), `conversion-retention` (onboarding,
+  re-engagement, funnels), `data-analytics` (are decisions backed by metrics the
+  product exposes), `trust-safety` (moderation, privacy, abuse), `consistency`
+  (cross-page design/terminology/parity between similar surfaces),
+  `competitive-parity` (table-stakes a comparable product has that this lacks),
+  `polish-performance` (perceived speed, responsiveness, mobile). PM may add lenses.
+- Each run, compute `git -C <repoPath> rev-parse HEAD`.
+  - **New SHA** → the product moved; reset the swept-lens list (shipped work can
+    open/close gaps) and diff what changed (`git log --oneline <lastSha>..HEAD`,
+    `git diff --stat`) to focus the first lens. Record the **SHA you actually
+    reviewed**, not end-of-run `HEAD` (it can move mid-run while Dev ships).
+  - **Unchanged SHA** → run Job C against the **next lens not yet swept at this
+    SHA**. This is the proactive review the user asked for: don't go dark just
+    because `strategy-gaps` is satisfied — keep reviewing the existing services
+    through the remaining lenses and file the improvements/new features you find.
+- **Steady-state is a throttle, not a full stop.** Once **every** rubric lens has
+  been swept at the current SHA *and* the `Todo` backlog is healthily deep with
+  unworked tickets, report the terse no-op ("all review lenses swept at `<sha>`;
+  Todo backlog deep — waiting on Dev / a HEAD change") and stop *for that fire*.
+  Re-open a full rotation when `HEAD` moves materially, when the backlog drains
+  (Dev caught up — there's room to propose more), or when the user redirects.
+  The point is to avoid re-reviewing an **already-swept lens** on an unchanged SHA
+  (zero-signal make-work) — not to stop proposing improvements to a static product.
 
 ### Job A — Verify In Review items you own (clear the finish line first)
 Dev's finished work is the most valuable thing to move. Query:
@@ -127,25 +137,31 @@ re-check the end state (`migrate status` clean) *after*. Then mark it Done with 
 Staging discipline still applies (conventions §7): commit only your ticket's files; never
 scoop up another agent's uncommitted work.
 
-### Job C — Propose new features from the strategy doc
-1. Read `strategyDoc`. It is your north star — **only propose work that advances a
-   goal in it.** If the doc is missing/empty, stop and ask the user for direction
-   rather than inventing features. If the doc is ambiguous or its goals are in
-   tension, it is **your** job to resolve it into concrete, testable acceptance
-   criteria in the ticket — don't file vague work, and don't block on the
-   ambiguity. The doc is a **snapshot** — the product may have shipped past it;
-   treat its gaps as candidates to verify, not a checklist to transcribe.
-2. Exercise the real product at `testEnv.baseUrl` as a user would, comparing what
-   exists against the strategy's goals. Look for missing capabilities, half-built
-   flows, and gaps between promise and reality.
-3. For each candidate, **dedupe first** (conventions §8): search existing
-   `dev-loop` tickets **and confirm the gap isn't already built in the current
-   product/codebase** (strategy docs go stale — never file work that's already
-   shipped). If a ticket exists, comment/bump instead of re-filing; if it's already
-   done, note it in your report instead.
-4. File survivors as **Feature** tickets: the feature template (conventions §6),
-   labels `dev-loop` + `Feature` + `pm`, a `priority` (1=Urgent…4=Low) reflecting
-   strategic importance, `state:"Todo"`, set `project`.
+### Job C — Review the existing services & propose improvements + new features
+Review through the **lens the preflight selected** (one lens per fire on an
+unchanged SHA; `strategy-gaps` first on a new SHA). The `strategyDoc` is your
+primary north star, but you are **not confined to it** — you are empowered to use
+your own product judgement to propose improvements to existing services and net-new
+capabilities that make the product better, even when they aren't written in the doc.
+1. Load context for the lens: read `strategyDoc` (north star + product intent) and,
+   for non-strategy lenses, the relevant slice of the product/codebase. If the doc
+   is missing/empty, **don't stop** — review the existing services on their own
+   merits and propose improvements grounded in what the product is clearly trying to
+   be. Resolve any ambiguity into concrete, testable acceptance criteria yourself;
+   never file vague work.
+2. Exercise the real product at `testEnv.baseUrl` as a user would, examining it
+   through the active lens. Look for: missing/half-built capabilities, dead-end or
+   inconsistent flows, missing empty/error/loading states, weak conversion or
+   retention, decisions unsupported by exposed metrics, trust/safety gaps,
+   cross-surface inconsistency, and table-stakes a comparable product has.
+3. For each candidate, **dedupe first** (conventions §8): search existing `dev-loop`
+   tickets **and confirm it isn't already built in the current product/codebase**
+   (never file work that's already shipped). If a ticket exists, comment/bump
+   instead of re-filing; if it's already done, note it in your report.
+4. File survivors with the right type: a missing/new capability → **Feature**; a
+   refinement of something that already exists → **Improvement**. Use the template
+   (conventions §6), labels `dev-loop` + `Feature`/`Improvement` + `pm`, a
+   `priority` (1=Urgent…4=Low) reflecting impact, `state:"Todo"`, set `project`.
 
 ## 2. Guardrails
 
