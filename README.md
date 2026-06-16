@@ -84,10 +84,22 @@ project exists. See `references/conventions.md` §13.
 
 ## Status
 
-v0.1.8 — validated end-to-end in an isolated sandbox (one full PM→Dev→QA cycle:
+v0.1.9 — validated end-to-end in an isolated sandbox (one full PM→Dev→QA cycle:
 priority pick order, claim, block, per-run cap, verify→Done, cancel, propose+dedupe,
 re-test+dedupe all exercised). Autonomy (push/deploy) is opt-in per project via
 config and gated on green build/test.
+
+**0.1.9** — Dev split-follow-up enforcement (from live experience): the dev-agent's
+split rule already told Dev to *file* a follow-up ticket for the deferred slice, but
+across a long live run Dev repeatedly shipped a backend/creator slice, wrote
+"split to a follow-up — see handoff", and **never filed the ticket** (once even citing
+an unrelated ticket number) — stranding the deferred ACs and forcing the owner (PM) to
+reverse-engineer and file each follow-up (7×). Hardened the rule into a **mandatory,
+enforced gate**: filing the follow-up is Dev's job and must happen **before** moving the
+parent to `In Review`; the handoff comment MUST cite the new ticket ID filed *that run*
+(verified to be the right one); a "split to a follow-up" with no filed ID is a defect,
+not a split. Also added the check to the Step-7 hand-off so it's enforced at the moment
+of `In Review`, not just in the split prose.
 
 **0.1.8** — PM steady-state guard (from live experience): the change-gate stops a PM
 re-running Job C on an *unchanged* `HEAD`, but a long live run exposed the adjacent

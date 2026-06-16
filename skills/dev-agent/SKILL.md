@@ -89,6 +89,17 @@ moved. A correct slice shipped + a clear follow-up beats a giant half-built
 deploy. (Still *block* — don't split — when the ticket is **unclear**; splitting
 is for clear-but-large.)
 
+> **Filing the follow-up is mandatory and is YOUR job — do it BEFORE you move the
+> parent to `In Review`, not "later" and not by deferring to the owner.** A handoff
+> that says *"the rest is split to a follow-up — see handoff"* **without an actual
+> filed ticket ID** is a defect: it strands the deferred ACs (the owner can't verify
+> what isn't tracked) and forces the owner to reverse-engineer and file it for you.
+> Concretely, every split handoff comment MUST contain the **new ticket's ID**
+> (e.g. "deferred the brand UI → filed CIT-NNN") that you created **this run** via
+> `save_issue`. Double-check the ID you cite is the one you just filed (don't
+> reference an unrelated ticket number). If you didn't file it, you didn't split —
+> you left the ticket half-done.
+
 **Dormant-behind-a-flag is the other answer — don't re-split it.** When the
 gate-unverifiable part is already scoped (by the owner, or sensibly by you) to
 ship *disabled in prod* — a feature flag that's OFF by default so the page/endpoint
@@ -142,7 +153,10 @@ will take it from there).
 `save_issue`: `state:"In Review"`. Comment with what you changed, where (files /
 routes), how you verified the gates, the commit/deploy ref if shipped, and a
 pointer to the acceptance criteria so the owner (PM for features, QA for bugs)
-can verify. Then loop to Step 1.
+can verify. **If you shipped only part of the ticket's ACs, the handoff MUST cite
+the follow-up ticket ID you filed this run for the rest (see the split rule) — a
+"split to a follow-up" with no filed ID is incomplete; file it now, then hand off.**
+Then loop to Step 1.
 
 ## 2. Guardrails
 
