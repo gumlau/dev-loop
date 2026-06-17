@@ -1,9 +1,10 @@
 # dev-loop
 
-Three autonomous agents — **PM**, **QA**, and **Dev** — that run a software-development
-loop **coordinated entirely through Linear ticket state**. They never call each
-other directly; Linear is the shared blackboard. Trigger each one manually when
-you want that role to take a turn.
+Four autonomous agents — **PM**, **QA**, **Dev**, and **Sweep** — that run a
+software-development loop **coordinated entirely through Linear ticket state**. They
+never call each other directly; Linear is the shared blackboard. Trigger each one
+manually when you want that role to take a turn. (PM/QA/Dev are the core producing
+loop, shown below; **Sweep** is a slower-cadence lifecycle janitor.)
 
 ```
         PM ──proposes feature──┐                 ┌──QA proposes bug──┐
@@ -24,11 +25,12 @@ you want that role to take a turn.
 |---|---|
 | **`pm-agent`** | Reads the product's strategy doc, exercises the real product, files **Feature** tickets, **verifies** features that reach `In Review`, and unblocks its own blocked tickets. |
 | **`qa-agent`** | Runs happy-path + edge-case tests in the configured test env, files **Bug** tickets, and **re-tests** bugs that reach `In Review`. |
-| **`dev-agent`** | Pulls `Todo` tickets in a fixed priority order, grooms them (enough info? duplicate?), implements, runs build/test gates, ships per config, and moves them to `In Review`. Blocks anything it can't act on rather than guessing. |
+| **`dev-agent`** | Pulls `Todo` tickets in a fixed priority order, grooms them (enough info? duplicate?), implements, runs build/test gates, self-reviews the diff, ships per config, smoke-checks prod (auto-revert on a break), and moves them to `In Review`. Blocks anything it can't act on rather than guessing. |
+| **`sweep-agent`** | Lifecycle janitor (slower cadence). Owns the cracks between the three owner-scoped agents: fixes tickets with a missing/wrong owner label (invisible to every other agent's queries), resets orphaned `In Progress` from crashed runs, nudges stale signals, and reports board health. Hygiene only — never verifies, implements, or ships. |
 
 The full rules — state machine, label taxonomy, ticket templates, priority order,
 and the claim / dedupe / blocked protocols — live in
-[`references/conventions.md`](references/conventions.md). All three skills read it.
+[`references/conventions.md`](references/conventions.md). All four skills read it.
 
 ## Safety boundary
 
@@ -84,10 +86,23 @@ Linear project exists. See `references/conventions.md` §13.
 
 ## Status
 
-v0.2.0 — validated end-to-end in an isolated sandbox (one full PM→Dev→QA cycle:
+v0.3.0 — validated end-to-end in an isolated sandbox (one full PM→Dev→QA cycle:
 priority pick order, claim, block, per-run cap, verify→Done, cancel, propose+dedupe,
 re-test+dedupe all exercised). Autonomy (push/deploy) is opt-in per project via
 config and gated on green build/test.
+
+**0.3.0** — added a 4th agent and a prod-safety gate. **`sweep-agent`** — a
+lifecycle janitor that owns the cracks between the three owner-scoped agents: every
+PM/QA/Dev query filters by owner label, so a ticket with a missing/wrong owner label
+is invisible to all of them and strands forever; Sweep finds and re-routes those,
+resets orphaned `In Progress` from crashed runs, and reports board health (hygiene
+only — never verifies/implements/ships). **Dev Step 6.5** — a post-deploy smoke
+check with autonomous rollback: after an unattended prod deploy, Dev verifies prod
+is alive (`deploy.healthCheck` or the `baseUrl`), and on a repeated failure reverts
+the commit + redeploys + reopens the ticket rather than leaving prod broken — the
+missing safety net for direct-to-prod shipping. (Deliberately NOT added as separate
+agents: `investigate`/`reviewer`/`validator`/`unblock` — folded into Dev's
+self-review + smoke gate, or dropped as conflicting with autonomy:full.)
 
 **0.2.0** — hardening pass adapting the mature jinko-brain agent harness to our
 autonomy-first posture (machine gates, never human prompts): a **prime directive**

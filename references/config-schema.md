@@ -44,7 +44,10 @@ ship/deploy settings. One file, many products.
       },
 
       "deploy": {
-        "command": "vercel --prod --yes"   // run after a successful push when autoDeploy
+        "command":     "vercel --prod --yes",  // run after a successful push when autoDeploy
+        "healthCheck": null                     // optional: a URL that must return 2xx, OR a command
+                                                //   that must exit 0, run by Dev Step 6.5 after deploy.
+                                                //   null → Dev hits testEnv.baseUrl root (non-5xx).
       },
 
       "blockedStateName": null        // set to a real Linear state name if you add a "Blocked" column; else null → use the `blocked` label
@@ -84,6 +87,10 @@ ship/deploy settings. One file, many products.
   behavioral corrections, sectioned per agent (`Shared`/`PM`/`QA`/`Dev`). Each skill
   reads it at run-start and applies its section that fire (conventions §14). Local
   machine state — never committed.
+- **`deploy.healthCheck`** (optional): a URL (must return 2xx) or a command (must
+  exit 0) that Dev runs in Step 6.5 right after an unattended prod deploy. On a
+  repeated failure Dev rolls the deploy back (revert + redeploy) rather than leaving
+  prod broken. Absent → Dev smoke-checks `testEnv.baseUrl` root for a non-5xx.
 - **Agent state files** (`pm-state.json`, `qa-state.json`) live next to
   `projects.json` and hold per-project loop state: last-reviewed/swept SHA, swept
   review lenses (PM), swept surfaces (QA). Local per-operator runtime state — never

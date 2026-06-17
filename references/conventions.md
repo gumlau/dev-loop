@@ -1,9 +1,9 @@
 # dev-loop — Shared Conventions
 
-The single source of truth for the **PM / QA / Dev** agents that run an autonomous
-software-development loop coordinated through **Linear**. All three skills load this
-file. If a rule here conflicts with a skill's body, this file wins — keeping the
-three agents interoperable is the whole point.
+The single source of truth for the **PM / QA / Dev / Sweep** agents that run an
+autonomous software-development loop coordinated through **Linear**. All four skills
+load this file. If a rule here conflicts with a skill's body, this file wins —
+keeping the four agents interoperable is the whole point.
 
 ## Table of contents
 0. [Prime directive — every fire is fresh](#0-prime-directive--every-fire-is-fresh)
@@ -61,6 +61,7 @@ numbered sections below.
 | **PM** | `Feature`, `Improvement`(`pm`) | In Review `pm` items; `blocked`+`needs-pm`; review lenses (Job C preflight) | Linear state + labels |
 | **QA** | `Bug`, `Improvement`(`qa`), `coverage` | In Review `qa` items; info-blocks; new-bug sweep | Linear state + labels |
 | **Dev** | (ships everyone's tickets) | `Todo` in pick order (§5), excluding `blocked` | In Review, for the owner |
+| **Sweep** | (nothing — hygiene only) | Tickets that fall through the cracks: missing/wrong owner label, orphaned `In Progress`, stale signals (cross-owner) | re-label/re-route → the right owner |
 
 State machine: `Todo → In Progress → In Review → Done` (verify-fail returns to
 `Todo`; `Canceled`/`Duplicate` are terminal; `blocked` is a **label**, not a
@@ -82,10 +83,11 @@ state, §9). Eligibility = the `dev-loop` label (§2); owner = the `pm`/`qa` lab
 
 ## 1. What the loop is
 
-Three agents, each triggered manually by the user (`/pm-agent`, `/qa-agent`,
-`/dev-agent`). They never call each other directly — they hand off **entirely
-through Linear ticket state**, so any of them can run at any time, in any order,
-even concurrently. Linear is the shared blackboard.
+Four agents, each triggered manually by the user (`/pm-agent`, `/qa-agent`,
+`/dev-agent`, `/sweep-agent`). They never call each other directly — they hand off
+**entirely through Linear ticket state**, so any of them can run at any time, in any
+order, even concurrently. Linear is the shared blackboard. (PM/QA/Dev are the core
+producing loop; Sweep is a slower-cadence janitor layered on top.)
 
 ```
         PM ──proposes feature──┐                 ┌──QA proposes bug──┐
@@ -106,6 +108,11 @@ even concurrently. Linear is the shared blackboard.
   files **bug** tickets, and **re-tests bug tickets** that reach `In Review`.
 - **Dev** pulls `Todo` tickets in priority order, grooms them (enough info? a
   duplicate?), implements, ships, and moves them to `In Review`.
+- **Sweep** is the lifecycle janitor (slower cadence): it fixes tickets that fall
+  through the cracks of the three owner-scoped agents — missing/wrong owner labels
+  (invisible to every owner query), orphaned `In Progress`, stale signals — and
+  reports board health. **Hygiene only**: it never verifies, implements, files
+  Features/Bugs, or ships.
 
 The verifier of a ticket is always **its owner** (the agent that filed it),
 identified by the owner label (§4). This is how PM picks up its features and QA

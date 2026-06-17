@@ -49,8 +49,9 @@ can pre-empt an action — if a rule would have you skip or block something, hon
 (`autoCommit`/`autoPush`/`autoDeploy` + `deploy.command`) so the user knows
 whether this run will touch prod. **Your ship gates are, in order: build/test
 (Step 5) → self-review (Step 5.5: spec-compliance + a code-review pass, blocks on
-Critical/High) → ship (Step 6)** — a red build OR an unresolved Critical/High
-self-review finding never ships. In `dry-run`: groom and write code locally if
+Critical/High) → ship (Step 6) → post-deploy smoke (Step 6.5: auto-revert on a prod
+break)** — a red build OR an unresolved Critical/High self-review finding never
+ships, and a deploy that fails its smoke check is rolled back. In `dry-run`: groom and write code locally if
 helpful, but make **no** Linear mutations, **no** push, and **no** deploy — print
 what you would do.
 
@@ -213,7 +214,26 @@ Only after green gates:
 If any of these is `false`, stop at that step and note it in the report (a human
 will take it from there).
 
-### Step 7 — Hand off
+### Step 6.5 — Post-deploy smoke + autonomous rollback
+**Only if you actually deployed to prod this step** (`autoDeploy` ran a
+`deploy.command`). Shipping unattended to prod means a green build can still break
+prod at runtime (bad env var, a migration, a 500 on a core route) — so confirm prod
+is alive before walking away:
+1. **Smoke-check prod.** Run `deploy.healthCheck` if config provides it (a URL that
+   must return 2xx, or a command that must exit 0); otherwise GET `testEnv.baseUrl`
+   root and require a non-5xx response. Keep the check tiny and high-signal (the
+   homepage + at most one critical route) — this is a liveness gate, not a test run.
+2. **On failure, retry once** (guard against a flaky cold start / transient blip).
+3. **If it still fails, the deploy broke prod — roll back, don't leave it broken.**
+   Revert the commit(s) you shipped this run on `git.defaultBranch`
+   (`git revert --no-edit <commit(s)>` — revert *all* of them if the ticket shipped
+   more than one, e.g. a separate regression-test commit), push, re-run
+   `deploy.command`, and confirm the smoke check now passes (prod restored to
+   the prior good state). Then reopen the ticket to `Todo` with `Bail-shape:
+   fix-exhausted` (§9), commenting what broke, the reverted commit sha, and that prod
+   was restored. **A reverted prod-breaker is a SUCCESS** — it protected real users;
+   the fix retries next fire. Never leave prod red waiting for a human.
+4. **If smoke passes**, proceed to Step 7.
 `save_issue`: `state:"In Review"`. Comment with what you changed, where (files /
 routes), how you verified the gates, the commit/deploy ref if shipped, and a
 pointer to the acceptance criteria so the owner (PM for features, QA for bugs)
