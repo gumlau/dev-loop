@@ -59,10 +59,15 @@ rule under its **Shared** section this run (conventions §14). (init has no dedi
 lessons section — it's not a loop agent — but a `Shared` rule still applies.)
 
 **Open the run** with a one-line summary: which project key you're initializing,
-whether its config already exists (fresh onboard vs. re-check), and the active
-`mode`. Then state the posture: *"operator-present setup — I'll ask for unknowable
-values and confirm before creating a Linear project; I create only what's missing
-and overwrite nothing."*
+whether its config already exists (fresh onboard vs. re-check), the active `mode`, and
+the configured `backend` (`linear` default / `local`, §18). Then state the posture:
+*"operator-present setup — I'll ask for unknowable values and confirm before creating a
+Linear project; I create only what's missing and overwrite nothing."*
+
+**Echo and confirm `repoPath` before any write** — the loop *commits from it* (Dev and
+strategy-doc commits), so a wrong path would commit into the wrong tree. State the
+resolved absolute `repoPath` back to the operator and get an explicit confirm before
+scaffolding files, writing config, or (later) any commit.
 
 > Safety (conventions §2): every Linear label/project/query you make is scoped to
 > the configured `linearTeam` and (for tickets, which init does **not** create)
@@ -109,6 +114,12 @@ The agents are product-agnostic; everything product-specific lives in
      (`defaultBranch`/`autoCommit`/`autoPush`/`autoDeploy`), `deploy`
      (`command`/`healthCheck`), and `blockedStateName` (null unless they added a
      real Blocked column).
+   - `backend` (`"linear"` default / `"local"`, §18) — **ask which substrate** this
+     project uses. For `"local"`, also gather the optional `localBoard` (board dir
+     override; default `${CLAUDE_PLUGIN_DATA}/<key>/board/`) and `ticketPrefix` (ID
+     prefix, default `"DL"`), and note that `strategyDoc` **must be a repo file** (a
+     Linear document can't back a local board — reject one if configured). `"linear"`
+     keeps the unchanged flow below.
 4. **Write the gathered values back** to `projects.json` (in `live`), preserving all
    other projects untouched and pretty-printing valid JSON. Set `defaultProject` if
    this is the only/first project. In `dry-run`, print the exact JSON block you'd
@@ -119,6 +130,13 @@ The agents are product-agnostic; everything product-specific lives in
 > Never guess repo paths, URLs, or deploy commands — ask. Never write secrets into
 > config (conventions §16): reference where to obtain them (`.env.local`, a vault,
 > "ask user") in `testEnv.notes`.
+
+> **If `backend:"local"` (§18): skip Steps 2–3 entirely** — there are no Linear labels
+> to provision (labels are just strings in the ticket frontmatter) and no Linear
+> project to create (the board directory is the project container). Do Step 4's
+> strategy-doc check (requiring a **repo file**), Steps 5–7 as written, and scaffold
+> the local board in Step 7's board sub-item. For `backend:"linear"` (default), do
+> Steps 2–3 unchanged.
 
 ### Step 2 — Linear labels (create only the missing ones)
 Ensure the §4/§13 workflow-label set exists on the configured `linearTeam`. First
@@ -189,6 +207,13 @@ the loaded `projects.json` (conventions §11/§14). Create any that are **absent
   last-reviewed SHA + swept review lenses).
 - `qa-state.json` — empty JSON object `{}` (QA lazily fills last-swept SHA + swept
   surfaces).
+- **If `backend:"local"` (§18): the board** — create `${CLAUDE_PLUGIN_DATA}/<key>/board/`
+  (or `localBoard`) with an empty `tickets/` dir and a `counter.json` =
+  `{ "prefix": "<ticketPrefix|DL>", "next": 1 }`. Machine-local, never committed. The
+  board dir **must be dedicated** — empty, or an existing dev-loop board; if `localBoard`
+  points at a non-empty, non-board directory, **refuse and flag it** (don't risk
+  globbing another project's files, §18 firewall). If the board already exists, leave
+  it untouched and just note it. Skip entirely for `backend:"linear"`.
 - `lessons.md` — a skeleton with one section header per agent plus the shared
   section, in this exact order (note the **`## Reflect`** header — a fifth agent,
   reflect-agent, is being added):
@@ -223,7 +248,10 @@ what's still needed. One line per check, grouped:
 
 - **Config**: project block present; required-by-role fields (`repoPath` for Dev,
   `strategyDoc` for PM, `testEnv` for QA); `mode`; `autonomy`; git/deploy flags.
-- **Linear**: each of the 8 workflow labels (existed vs. created); the project.
+- **Backend**: which substrate (`linear`/`local`, §18); for `local`, the board dir +
+  `counter.json` present.
+- **Linear** (linear backend only): each of the 8 workflow labels (existed vs.
+  created); the project. *(— for `local`: skipped, the board dir is the container.)*
 - **Strategy doc**: readable / scaffolded / still-needed.
 - **Test env**: `setup` ran; reachability smoke.
 - **Build**: typecheck/build run clean.

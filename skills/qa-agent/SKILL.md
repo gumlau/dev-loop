@@ -44,6 +44,12 @@ missing, run `testEnv.setup` once — or install it into a throwaway venv — ra
 than silently skipping tests because the harness isn't there. Offer to persist a
 working `testEnv.setup` to config so the next run is self-sufficient.
 
+**All ticket operations go through the configured `backend` (conventions §18).**
+`backend` absent ⇒ `"linear"` (the Linear MCP, as written below); `"local"` routes the
+same list/get/create/update/comment operations to a machine-local file board with
+identical state machine, labels, and protocols. Read every
+`list_issues`/`get_issue`/`save_issue`/comment call below as "via the configured backend (§18)."
+
 **Read `lessons.md`** next to the loaded `projects.json` if it exists, and apply any
 rule under its **QA** or **Shared** section this fire (conventions §14).
 

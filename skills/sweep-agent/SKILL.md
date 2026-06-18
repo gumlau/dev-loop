@@ -46,6 +46,12 @@ expands to an empty/`-local` dir), fall back to
 `~/.claude/plugins/data/dev-loop/projects.json` or search
 `~/.claude/plugins/data/**/projects.json` before asking the user.
 
+**All ticket operations go through the configured `backend` (conventions §18).**
+`backend` absent ⇒ `"linear"` (the Linear MCP, as written below); `"local"` routes the
+same list/get/update/comment operations to a machine-local file board with identical
+state machine, labels, and protocols. Read every
+`list_issues`/`get_issue`/`save_issue`/comment call below as "via the configured backend (§18)."
+
 **Read `lessons.md`** next to the loaded `projects.json` if it exists, and apply any
 rule under its **Sweep** or **Shared** section this fire (conventions §14).
 

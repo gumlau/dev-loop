@@ -40,6 +40,15 @@ pick the project, and load `linearProject`, `linearTeam`, `repoPath`,
 need it under `autonomy:"full"` to resolve scoping, read a Linear doc with
 `get_document`; Dev never *writes* the strategy doc — that's PM's job.)
 
+**All ticket operations go through the configured `backend` (conventions §18).**
+`backend` absent ⇒ `"linear"` (the Linear MCP, as written below); `"local"` routes the
+same operations — the §5 pick query, the §7 claim, grooming, comments, the In-Review
+hand-off — to a machine-local file board with identical state machine, labels, and
+protocols. Read every `list_issues`/`get_issue`/`save_issue`/comment call below as "via
+the configured backend (§18)"; the REPLACE-style label and verify-after-write
+disciplines apply to a frontmatter rewrite too (and the local claim uses a per-fire run
+token, §18).
+
 **Read `lessons.md`** next to the loaded `projects.json` if it exists, and apply any
 rule under its **Dev** or **Shared** section this fire (conventions §14). A lesson
 can pre-empt an action — if a rule would have you skip or block something, honor it.

@@ -53,6 +53,13 @@ If that path doesn't resolve (e.g. `${CLAUDE_PLUGIN_DATA}` expands to an empty o
 `-local` dir), fall back to `~/.claude/plugins/data/dev-loop/projects.json` or search
 `~/.claude/plugins/data/**/projects.json` before asking the user.
 
+**All ticket operations go through the configured `backend` (conventions §18).**
+`backend` absent ⇒ `"linear"` (the Linear MCP, as described throughout this file);
+`"local"` routes the same operations — list/get/create/update tickets, comments, the
+strategy doc — to a machine-local file board with identical state machine, labels, and
+protocols. The jobs below are written in Linear terms; read every
+`list_issues`/`get_issue`/`save_issue`/comment call as "via the configured backend (§18)."
+
 **Read `lessons.md`** next to the loaded `projects.json` if it exists, and apply any
 rule under its **PM** or **Shared** section this fire (conventions §14).
 

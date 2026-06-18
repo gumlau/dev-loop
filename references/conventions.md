@@ -25,6 +25,7 @@ keeping the five agents interoperable is the whole point.
 15. [Test coverage — every Bug/Feature earns a regression test](#15-test-coverage--every-bugfeature-earns-a-regression-test)
 16. [Security doctrine](#16-security-doctrine)
 17. [Self-evolution boundary — what the Reflect agent may change](#17-self-evolution-boundary--what-the-reflect-agent-may-change)
+18. [Backend — Linear vs local](#18-backend--linear-vs-local)
 
 ---
 
@@ -149,6 +150,12 @@ Hard rules, no exceptions:
 This single label is the firewall between the autonomous loop and the human
 backlog. Treat it as load-bearing.
 
+**In `local` mode the board *directory* is the firewall** (§18): a dedicated,
+machine-local ticket store with no human backlog in it, so the human-backlog axis of
+isolation is structural rather than label-enforced. Tickets still carry `dev-loop` and queries still scope to
+it for parity, but "scope by `project`" means "operate only within this project's
+board dir" — and a glob must never escape it (the cross-project axis still applies).
+
 ---
 
 ## 3. Linear state machine
@@ -157,6 +164,9 @@ Your Linear team has these workflow states (Linear's defaults; use the **name** 
 `save_issue`'s `state` field): `Backlog`, `Todo`, `In Progress`, `In Review`,
 `Done`, `Canceled`, `Duplicate`. There is **no "Blocked" or "Processing" state** —
 "Processing" maps to `In Progress`, and "Blocked" is a label (§9), not a state.
+These same state names are authoritative in both backends — in `local` mode (§18) the
+state lives in the ticket file's frontmatter `state:` field (a field rewrite, not a
+folder move), using these exact names.
 
 | State | Meaning | Who moves it here |
 |---|---|---|
@@ -406,6 +416,13 @@ Dev's pick query (§5) must exclude `blocked` tickets.
 Never page through the whole workspace. If a result is still huge, your filter is
 too broad — narrow it before reading.
 
+**Local backend (§18): the same discipline, on files.** `list_issues` becomes a
+glob+parse+filter over the board's `tickets/*.md`; still filter to the narrow slice
+you need (by state/label/type) rather than parsing every file blindly, and `get_issue`
+a single file when that's all you need. The write hazards below — labels are
+REPLACE-style (re-pass the FULL set), and verify-after-write — apply equally to a
+frontmatter rewrite (re-read the file to confirm `state:`/`labels:` landed).
+
 ### Linear MCP write hazards (read before any `save_issue`)
 
 Four footguns that silently corrupt the loop — every skill must handle them:
@@ -447,7 +464,10 @@ On startup each skill:
    uses it; otherwise asks which project to operate on.
 3. Loads that project's `linearProject`, `linearTeam`, `repoPath`,
    `strategyDoc`, `testEnv`, `build`, `deploy`, `git`, `mode`, and `autonomy`
-   (optional — see §12; absent ⇒ the conservative `"ask"` default).
+   (optional — see §12; absent ⇒ the conservative `"ask"` default). It also loads
+   `backend` (`"linear"` | `"local"`; **absent ⇒ `"linear"`**, so existing projects
+   are unchanged) and, for `local`, the optional `localBoard` path and `ticketPrefix`
+   (§18).
 
 If `projects.json` is missing or the chosen project lacks a required field, the
 skill asks the user for the missing value and offers to write it back to config —
@@ -457,7 +477,10 @@ it never guesses repo paths, URLs, or deploy commands.
 local per-operator state next to it: `pm-state.json` / `qa-state.json` (the
 last-reviewed/swept SHA and swept review-lenses (PM) / swept surfaces (QA)), and an
 optional `lessons.md` (per-operator behavioral corrections, §14). These are
-machine-local — never committed, never shared; created lazily on first run.
+machine-local — never committed, never shared; created lazily on first run. **In
+`local` backend mode (§18) the ticket board also lives here** —
+`${CLAUDE_PLUGIN_DATA}/<project-key>/board/` (`tickets/`, `counter.json`), or wherever
+`localBoard` points — under the same machine-local, never-committed rule.
 
 ---
 
@@ -538,6 +561,12 @@ Idempotent; safe to re-run. Before the first live run against a workspace:
 4. Create the runtime files next to `projects.json` if absent: `pm-state.json`,
    `qa-state.json`, and a `lessons.md` skeleton (§11, §14). (`/dev-loop:init` does
    this for you.)
+5. **If `backend:"local"`** (§18): skip steps 1–2 (no Linear labels/project to
+   provision — labels are just strings, and the board dir is the project container)
+   and instead scaffold the board — `${CLAUDE_PLUGIN_DATA}/<project-key>/board/` with
+   `tickets/` and a `counter.json` (`{ "prefix": "<ticketPrefix|DL>", "next": 1 }`) —
+   and ensure `strategyDoc` is a **repo file** (a Linear document can't back a local
+   board). `/dev-loop:init` does this.
 
 ---
 
@@ -570,6 +599,10 @@ Each entry is a short rule with a one-line **Why** and **How to apply**. A rule 
 pre-empt an action: *if a rule would have skipped or changed work you were about to
 do, honor it.* Keep it lean (supersede stale rules, don't accumulate) — a wrong
 rule is worse than none.
+
+(Backend-agnostic: `lessons.md` is unaffected by the §18 backend dial — it is
+per-operator runtime state regardless of whether tickets live in Linear or a local
+board.)
 
 **Local vs durable.** `lessons.md` is **local per-operator** machine state — never
 committed, never shared. Patterns that should hold for *every* operator of this
@@ -681,3 +714,143 @@ the core operating instructions is **surfaced, not executed**, exactly like the
 security stop-and-surface case (§16). Reflect is otherwise **read-only on Linear
 product tickets** — it observes the loop; it never files Features/Bugs, ships,
 verifies, or relabels/re-routes (those are PM/QA/Dev/Sweep).
+
+---
+
+## 18. Backend — Linear vs local
+
+Everything above describes the loop coordinating through **Linear** (the MCP, the
+state machine §3, labels §4, claim §7, dedupe §8, blocked §9, querying §10). That
+substrate is one **backend**. The loop can equally coordinate through a **local file
+store** with the *same* state machine, label semantics, and protocols — only the
+storage primitive changes. This section is the **single abstraction point**: every
+"ticket operation" each skill performs maps to one of two backends, defined once here.
+Each skill's §0 carries just one line — "all ticket operations go through the
+configured backend (§18)" — instead of re-stating every job in backend terms.
+
+**Default is `linear`.** `backend` absent ⇒ `"linear"`, so existing behavior is
+**100% unchanged**; `local` is strictly opt-in via per-project config (§11) and
+bootstrapped by `/dev-loop:init`. Every rule elsewhere in this document is
+backend-agnostic — this section is the only place the two diverge.
+
+### Local board layout
+The local board is **machine-local per-operator runtime state** — it lives in the
+data dir next to `projects.json` (§11), **never** in the product repo (a board of
+ticket-state would otherwise churn the repo with coordination commits). Default:
+
+```
+${CLAUDE_PLUGIN_DATA}/<project-key>/board/
+  counter.json          # ID hint: { "prefix": "DL", "next": 42 }  (a hint, not the source of truth — see ID allocation)
+  tickets/
+    DL-1.md             # one markdown file per ticket
+    DL-2.md
+```
+
+`<project-key>` is the config key, so multiple local projects stay isolated. The path
+is overridable via `localBoard` (§11). It is created by `/dev-loop:init` (or lazily on
+first write) and **must be a dedicated dev-loop board dir on a single local
+filesystem** — never a shared/pre-existing dir, and never a network mount (the
+atomic-rename below needs one filesystem). Never committed, never shared.
+`strategyDoc` in local mode is a **repo file** (read/edit/commit) — never a Linear
+document; init rejects a `{linearDocument}` strategyDoc under `backend:"local"`.
+
+### Ticket file format
+One file per ticket, `tickets/<ID>.md`: YAML frontmatter (machine fields) + the §6
+template body + an **append-only, dated** comments section. **State lives in the
+`state:` frontmatter field** (a field rewrite — not folders-per-state, which would
+invite move races). State names are exactly §3's (`Backlog`/`Todo`/`In Progress`/
+`In Review`/`Done`/`Canceled`/`Duplicate`).
+
+```markdown
+---
+id: DL-12
+title: Add CSV export to the link manager
+type: Feature                 # Feature | Bug | Improvement
+state: In Review              # §3 names, verbatim
+owner: pm                     # pm | qa (§4)
+labels: [dev-loop, Feature, pm]   # FULL label set (§4); dev-loop always present
+priority: 2                   # 1=Urgent 2=High 3=Medium 4=Low 0=None (§5)
+assignee: null                # a per-fire claim token when claimed (§7), else null
+relatedTo: [DL-9]             # append-only (merge on write)
+duplicateOf: null
+created: 2026-06-18T09:14:00Z
+updated: 2026-06-18T11:02:00Z
+---
+## Context
+…(the §6 Feature/Bug template verbatim)…
+
+---
+## Comments
+
+### 2026-06-18T10:40:00Z — dev (run a1b2)
+Claiming (§7). Implementing against ACs.
+
+### 2026-06-18T11:02:00Z — dev (run a1b2)
+state: Todo → In Review. Shipped in abc1234; coverage test added.
+```
+
+`labels` always carries the **full** set (§4). **Every state move MUST append a dated
+comment recording the transition** (`state: X → Y`) — the dated comment log is the
+board's activity history (frontmatter `updated:` is only point-in-time), and it is
+what Reflect (§17, and its run logs) reconstructs the window's activity from in local
+mode, in place of Linear's activity feed. Comments are append-only.
+
+### Operation mapping (Linear MCP → local)
+Same semantics — same filters, same REPLACE-style label discipline (§10), same
+verify-after-write (§7/§10):
+
+| Linear MCP op | Local op |
+|---|---|
+| `list_issues` (scoped `project`+`label`+`state`) | glob `tickets/*.md` **within this board dir only** (ignore temp/lock files — they are not `*.md`), parse frontmatter, filter in-process by the same predicates (label ∈ `labels[]`, `state`, `priority`, type) |
+| `list_issues` with a free-text `query` (§8 dedupe / ideation) | the same glob+filter, then a substring/keyword scan over each candidate's `title` + body |
+| `get_issue` | read `tickets/<ID>.md` |
+| `save_issue` (create) | allocate an ID (below), exclusively create `tickets/<ID>.md` |
+| `save_issue` (update) | read-modify-rewrite frontmatter under the per-ticket lock (below); **labels REPLACE-style** — re-pass the FULL set (§10 #1); **append-only lists (`relatedTo`) merge** — re-read, union, write; append a state-move comment; bump `updated` |
+| `list_comments` / `save_comment` | read / append-only-write the `## Comments` section (chronological) |
+| `create_issue_label` | **no-op** — labels are plain strings; no registry to provision (init skips the label step in local mode) |
+| `get_document` / `save_document` | only the **repo-file** form applies — `strategyDoc` is a repo file (§11, pm-agent §0) |
+
+The §10 query discipline still applies: fetch the narrow slice you need (filter by the
+most specific predicate; `get_issue` one file when that's all you need), never read
+every file blindly.
+
+### ID allocation (race-safe via exclusive create)
+`counter.json` (`{ "prefix": "...", "next": N }`, `prefix` from `ticketPrefix` (§11)
+or `"DL"`) is a **start hint, not the source of truth**. The **atomic claim is the
+ticket file's exclusive creation**:
+1. Read `counter.json` for a starting `N` (1 if absent).
+2. **Exclusively create** `tickets/<prefix>-N.md` (open with `O_CREAT|O_EXCL` — the OS
+   guarantees exactly one creator wins). If it already exists, increment `N` and retry.
+3. On success you own the ID; write the frontmatter+body, then best-effort bump
+   `counter.json` to `next > N` (a hint for the next allocator — losing this race is
+   harmless, step 2 still arbitrates). IDs are monotonic and never reused (a
+   `Canceled`/`Duplicate` keeps its file + ID), mirroring Linear's server IDs.
+
+### Concurrency — locks, claim token, verify
+The §7 claim and §10 verify-after-write apply to files, with real atomicity (not just
+re-read-after-write, which alone can't arbitrate two writers):
+- **Per-ticket lock for read-modify-write.** Before updating a ticket, acquire a lock
+  by exclusively creating `tickets/<ID>.lock` (`O_EXCL`); if it exists, another writer
+  holds it — back off and retry. Read → modify → write via **temp file in the same
+  dir + atomic rename** → release the lock (remove it). The temp/lock files are not
+  `*.md`, so the list glob ignores them.
+- **Claim uses a per-fire token (§7).** A bare `assignee:"dev"` can't tell two Dev
+  fires apart. Each fire mints a unique run token (e.g. `dev (run <short-id>)`); the
+  claim writes that token under the lock, re-reads, and proceeds only if the token is
+  **yours**. Dev Step 0 orphan-reclaim is the **opposite** check — it must NOT require
+  the token to be yours (a crashed prior fire's token is by definition not the current
+  fire's, so requiring equality would reclaim nothing): it keys on `assignee` set +
+  `In Progress` + **no shipped artifact** (Dev Step 0's existing test), then clears the
+  stale token and re-queues.
+- **Shared-checkout caveat (§7) still holds** — the claim dedups *tickets*, not the
+  git working tree; stage only your ticket's files.
+
+### Firewall in local mode (§2)
+Local mode removes the **human-backlog** axis of the firewall (the board dir holds no
+human-owned tickets — nothing to leak into) but **not the cross-project axis**: every
+glob MUST be confined to *this* project's `board/` dir, never a parent or a shared
+path, so one project's loop can't touch another's board. init guarantees the board dir
+is **dedicated** (empty or dev-loop-scaffolded) before use. Tickets still carry the
+`dev-loop` label for parity (same code path, templates, reports across backends). The
+§2 rules — never widen the blast radius, no bulk-mutate, one ticket at a time — apply
+verbatim; "scope by `project`" means "operate only within this board dir".

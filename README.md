@@ -97,11 +97,15 @@ cp config/projects.example.json ~/.claude/plugins/data/dev-loop/projects.json
 # then edit: map each Linear project → repo, strategy doc, test env, git/deploy flags
 ```
 
-Two orthogonal dials per project:
+Three orthogonal dials per project:
 - **`mode`** — `"dry-run"` (analyze + print what it *would* do; no writes) vs `"live"`
   (create/transition tickets and, for Dev, commit/push/deploy per `git`/`deploy`).
 - **`autonomy`** — `"ask"` (escalate human-only calls) vs `"full"` (decide and act; no
   interactive prompts — escalation narrows to genuine external prerequisites).
+- **`backend`** — `"linear"` (default; coordinate through the Linear MCP) vs `"local"`
+  (a machine-local file board in the data dir, same state machine + protocols, no
+  Linear required). Absent ⇒ `"linear"`. See
+  [conventions §18](references/conventions.md#18-backend--linear-vs-local).
 
 Full schema + field reference: [`references/config-schema.md`](references/config-schema.md).
 
@@ -164,7 +168,8 @@ load-bearing.
 
 ## Status
 
-**v0.4.0** — five agents (PM/QA/Dev/Sweep/Reflect) + the `init` setup command; validated
+**v0.5.0** — five agents (PM/QA/Dev/Sweep/Reflect) + the `init` setup command; validated
 end-to-end in an isolated sandbox and battle-tested across long live runs. Autonomy
-(push/deploy) is opt-in per project and gated on a green build. Full history in
-[`CHANGELOG.md`](CHANGELOG.md).
+(push/deploy) is opt-in per project and gated on a green build. Coordination is
+backend-pluggable — Linear (default) or a machine-local file board (`backend:"local"`,
+conventions §18). Full history in [`CHANGELOG.md`](CHANGELOG.md).

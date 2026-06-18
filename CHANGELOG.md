@@ -3,6 +3,31 @@
 All notable changes to the dev-loop plugin. Most of these landed from **live-loop
 experience** — a real failure observed while the agents ran, then hardened into a rule.
 
+## 0.5.0 — pluggable backend (Linear | local)
+- **`backend` config dial** (conventions §18, config-schema.md): per-project choice of
+  coordination substrate. **`"linear"` (default when absent)** is the Linear MCP, exactly
+  as before — existing projects are 100% unchanged. **`"local"`** coordinates through a
+  machine-local file board in the data dir (`${CLAUDE_PLUGIN_DATA}/<key>/board/`): one
+  markdown file per ticket (YAML frontmatter + §6 body + appended dated comments), state
+  in the frontmatter, monotonic prefixed IDs (`ticketPrefix`, default `DL`).
+- **Race-safe by construction**: the atomic claim is the ticket file's **exclusive
+  (`O_EXCL`) creation** (counter.json is only a start hint); updates take a per-ticket
+  lock + atomic temp-file+rename and re-read to verify; the claim uses a **per-fire run
+  token** so two concurrent Dev fires can't both win a ticket.
+- **Single abstraction point.** §18 maps every Linear MCP op to its local equivalent
+  (list→glob+parse+filter, free-text query→substring scan, get→read file, create→O_EXCL
+  write, update→locked frontmatter rewrite with the FULL label set + merged append-only
+  lists, comments→appended dated section, `create_issue_label`→no-op, get/save_document
+  →repo file). Each SKILL gains **one** §0 line — "all ticket ops go through the
+  configured backend (§18)" — instead of rewriting any job body.
+- **Firewall in local mode**: the board directory *is* the boundary (no human backlog to
+  leak into), but the cross-project axis still holds — every glob stays inside this
+  project's board dir, and `init` guarantees a dedicated dir. Every state move appends a
+  dated comment, so Reflect reconstructs the window's activity from the comment log + git.
+- **`init`** confirms `repoPath` before any write, asks the backend, and for `local`
+  scaffolds `board/` + requires a repo-file `strategyDoc`, skipping the Linear
+  label/project steps.
+
 ## 0.4.0 — reflect-agent + init
 - **`reflect-agent`** (5th agent, slowest/daily cadence): a **meta** retrospective that
   studies the loop's *own* behavior over a window (Linear tickets by type/owner/

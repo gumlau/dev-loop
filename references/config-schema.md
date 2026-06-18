@@ -23,6 +23,9 @@ repo, its test environment, and its ship/deploy settings. One file, many product
                                                //   save_document) — see pm-agent §0 + Job C.
       "mode":          "live",        // "live" | "dry-run"  (see conventions §12)
       "autonomy":      "ask",         // "ask" (default) | "full" — who decides vs escalates (see conventions §12a)
+      "backend":       "linear",      // "linear" (default when absent) | "local" — coordination substrate (see conventions §18)
+      "localBoard":    null,          // local backend only: override board dir; null → ${CLAUDE_PLUGIN_DATA}/<key>/board/
+      "ticketPrefix":  "DL",          // local backend only: ID prefix for board tickets (e.g. "DL-1"); ignored for linear
 
       "testEnv": {                    // where QA + verification run
         "baseUrl":     "https://monpick.vercel.app",
@@ -96,6 +99,15 @@ repo, its test environment, and its ship/deploy settings. One file, many product
   `*-state.json` files; if a launcher happens to tee agent output to
   `logs/<agent>-<date>.log` in the data dir, it reads that too, but degrades silently
   when absent. It writes no new config keys.
+- **`backend`** (optional; default `"linear"`): the coordination substrate
+  (conventions §18). `"linear"` is the Linear MCP, exactly as today — absent ⇒
+  `"linear"`, so existing projects are unchanged. `"local"` uses a machine-local file
+  board under `${CLAUDE_PLUGIN_DATA}/<key>/board/` (one markdown file per ticket; state
+  in the frontmatter; same state machine, labels, and protocols). `localBoard`
+  overrides the board path; `ticketPrefix` sets the ID prefix (default `"DL"`). Both
+  are ignored under `"linear"`. In `"local"` mode `strategyDoc` must be a **repo file**
+  (a Linear document can't back a local board), and `/dev-loop:init` scaffolds `board/`
+  while skipping the Linear label/project steps.
 - **`deploy.healthCheck`** (optional): a URL (must return 2xx) or a command (must
   exit 0) that Dev runs in Step 6.5 right after an unattended prod deploy. On a
   repeated failure Dev rolls the deploy back (revert + redeploy) rather than leaving
