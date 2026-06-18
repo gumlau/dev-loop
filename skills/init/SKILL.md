@@ -195,6 +195,9 @@ the loaded `projects.json` (conventions §11/§14). Create any that are **absent
 
   ```markdown
   # dev-loop lessons — per-operator corrections (local, never committed)
+  <!-- Bounded working set (conventions §14): ≤ ~6 rules/section, ≤ ~150 lines total.
+       Each rule cites evidence + carries `added:`/`last-seen:`. Reflect expires stale
+       rules and promotes durable ones into conventions — keep this file flat, not growing. -->
 
   ## Shared
 

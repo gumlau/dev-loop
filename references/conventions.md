@@ -576,6 +576,32 @@ committed, never shared. Patterns that should hold for *every* operator of this
 plugin go in this conventions file; product-direction that should hold for every PM
 run goes in the `strategyDoc`. `lessons.md` is the fast, private override layer.
 
+**Keep it bounded — `lessons.md` is a working set, not an archive.** It's read by
+every agent on **every** fire, so its size is a running tax on the whole loop; an
+ever-growing rule list also means agents start silently ignoring rules. Hold it to a
+budget with two **outflow** valves, so inflow never wins:
+
+- **Budget (a forcing function, not a suggestion).** Target **≤ ~6 rules per agent
+  section** and **≤ ~150 lines total** (a sane default; tune per product). When a
+  section is at budget you may **not** add a rule without first removing one —
+  expire, merge, supersede, or promote.
+- **Date every rule** — `added: <date>` and `last-seen: <date>` (the most recent date
+  its pattern recurred), so staleness is *measured*, not guessed.
+- **Two ways a rule leaves:**
+  - **Promote** — a rule that has proven durable and should hold for *every* operator
+    graduates **out**: draft a §17 proposal to fold it into this `conventions.md` (or
+    the `strategyDoc` for product direction); once the human applies it, **delete it
+    from `lessons.md`** — the core now carries it, so it no longer costs a line here.
+  - **Expire** — a rule exists to fix a *recurring* pattern; if that pattern hasn't
+    recurred for **~2 weeks** (`last-seen` gone stale), the fix held or the code moved
+    past it → **prune it**.
+- **Consolidate.** Merge near-duplicate rules on one theme into a single general rule;
+  never restate a rule that already lives in conventions (redundant → prune).
+
+The healthy steady state is a **small, churning** set of recent, evidence-backed
+corrections — durable wisdom keeps graduating to conventions, stale patches keep
+expiring, and the file stays roughly flat in size however long the loop runs.
+
 If the file is absent, proceed normally — it is optional.
 
 ---

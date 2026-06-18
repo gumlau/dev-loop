@@ -121,25 +121,36 @@ project (§2):
 
 ### Job 2 — Curate `lessons.md` (the self-evolution act)
 This is the one place you mutate behavior, and you do it **conservatively, from
-recurring evidence only**. For each pattern that shows up **repeatedly** in Job 1
-(a one-off is not a lesson — wait for a second occurrence), distill ONE concise rule
-and place it under the right agent section (`Shared`/`PM`/`QA`/`Dev`/`Sweep`/
-`Reflect`) of `lessons.md`, in the §14 entry shape (a short rule + one-line **Why**
-+ **How to apply**). Three operations, in priority order:
-- **SUPERSEDE** a stale/contradicted rule before adding a competing one — keep the
-  file lean; a wrong or outdated rule is worse than none (§14).
-- **PRUNE** a rule whose evidence no longer holds (the pattern stopped recurring, or
-  conventions absorbed it) — say which and why.
-- **ADD** a new rule only when the evidence is recurring and the rule is actionable.
+recurring evidence only**, keeping the file a **bounded working set** (§14) — it's read
+by every agent on every fire, so size is a tax on the whole loop. **Work the outflow
+valves FIRST, then add within budget** — never the reverse, or the file only grows:
+
+1. **EXPIRE** — prune any rule whose pattern hasn't recurred for ~2 weeks (`last-seen`
+   gone stale) or that conventions has since absorbed: the fix held or the code moved
+   past it. Say which and why.
+2. **CONSOLIDATE / SUPERSEDE** — merge near-duplicate rules on one theme into one
+   general rule; replace a stale/contradicted rule rather than adding a competing one.
+3. **PROMOTE** — a rule that has proven durable and should hold for *every* operator
+   doesn't belong here: draft a §17 proposal (Job 3) to fold it into `conventions.md`
+   (or the `strategyDoc`), and once it's promoted, **delete it from `lessons.md`**.
+4. **ADD** — only now, and only within budget: for each pattern that recurs in Job 1
+   (≥2 occurrences — a one-off is *reported*, not codified), distill ONE concise rule
+   under the right agent section (`Shared`/`PM`/`QA`/`Dev`/`Sweep`/`Reflect`), in the
+   §14 shape (rule + one-line **Why** + **How to apply**), stamped `added:`/`last-seen:`.
+   **If that section is already at budget (~6 rules), you may NOT add without first
+   removing one** via steps 1–3 — the budget is a forcing function (§14), not a hope.
 
 Hard requirements on every lesson change:
 - **Cite the evidence inline** — the ticket IDs and/or commit shas (and the date
-  window) that justify the rule. A lesson with no evidence pointer is not allowed; it
-  must be auditable and revertible.
+  window) that justify the rule, and **bump its `last-seen:` date** when a rule you
+  keep was reinforced this window. A lesson with no evidence pointer is not allowed; it
+  must be auditable, revertible, and *datable* (so it can later expire).
 - **Stay conservative and scoped.** Encode the *narrowest* correction that fixes the
   observed pattern; don't generalize beyond what the evidence shows.
-- **Keep it lean.** Prefer editing/superseding an existing rule over piling on a new
-  one. The file is an override layer, not a changelog.
+- **Stay within budget (§14).** Target ≤ ~6 rules per section / ~150 lines total; an
+  ADD at budget must be paired with an expire/merge/promote. Prefer editing or
+  superseding an existing rule over piling on a new one — the file is a bounded
+  override layer, not a changelog.
 - **Right layer.** A correction that should hold for **every operator** of this
   plugin is NOT a `lessons.md` rule — it's a conventions change, which you **propose**
   in Job 3 (you must not edit conventions yourself). Product-direction belongs in the
@@ -180,6 +191,9 @@ Compose the daily retro — one screen of pure signal for the operator:
 - **Smoke / rollback incidents** — Dev Step-6.5 auto-reverts and any prod breaks.
 - **Wasted cycles** — duplicates filed, re-implemented done work, no-op churn.
 - **Lesson changes this fire** (from Job 2) and **structural proposals** (from Job 3).
+- **`lessons.md` health** — total rules / lines and per-section counts vs. the §14
+  budget, plus this fire's churn (added / expired / merged / promoted). If any section
+  is over budget, say so and what you'll expire next — the file must trend flat, not up.
 
 ## 2. Guardrails
 - **Observe + curate only — never produce.** Never file a Feature/Bug/Improvement for
