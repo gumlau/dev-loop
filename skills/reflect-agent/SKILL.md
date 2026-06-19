@@ -84,10 +84,12 @@ absent, skip it silently** and rely on Linear + git, which are always present.
 
 **Reports & operator review (conventions §22).** At run-start (after `lessons.md`):
 finalize any due daily / weekly / monthly roll-up (cadence derived from your reports tree
-— newest file per level, with `date +%F` / `+%G-W%V` / `+%Y-%m`) and act on any
+— newest file per level, or your Linear report doc under `reports.sink:"linear"` (§23),
+with `date +%F` / `+%G-W%V` / `+%Y-%m`) and act on any
 **un-acted** operator review (点评) of your reports — distill it into one rule under your
 **own** `lessons.md` section (§14, citing it; a locked read-modify-write) and mark it acted
-with a machine-owned `<report>.review.acted` sidecar; a structural ask is a §17
+with a machine-owned `<report>.review.acted` sidecar (or the `reports-state.json` ledger
+under `reports.sink:"linear"`, §23); a structural ask is a §17
 `[<agent>-proposal]`, never a self-edit. Respect `mode` (§12): in `dry-run`, write nothing.
 **As Reflect specifically:** your daily retrospective (Job 4) **is** your §22 daily report
 — write it to `reports/reflect-agent/daily/<date>.md` (not a second file; on a quiet-window

@@ -3,6 +3,38 @@
 All notable changes to the dev-loop plugin. Most of these landed from **live-loop
 experience** — a real failure observed while the agents ran, then hardened into a rule.
 
+## 0.10.0 — optional Linear-hosted reports (`reports.sink`)
+- **Opt-in `reports.sink: "files" | "linear"`** (conventions §23; **absent ⇒ `files`**, so
+  v0.9.0 behaves byte-for-byte). `linear` routes the report **body** + the **点评** channel
+  to Linear for a **cloud / remote** runtime where the operator can't reach the data dir —
+  read reports and write reviews from a browser / phone. **Decoupled from the §18 backend**;
+  **default-off, never the default** — it trades away a §16 defense-in-depth layer.
+  - **Reports = 8 rolling Linear Documents** (one per agent) in a **dedicated** reports
+    project/initiative, three fixed `## Daily`/`## Weekly`/`## Monthly` body sections with
+    dated `###` entries. Documents never appear in `list_issues`, so the §2/§5/§8/§10 board
+    firewall is **structural**. (No per-period docs — the MCP has no doc delete/archive;
+    the rolling body is pruned in place.)
+  - **Provenance by channel, not author** (the shared-Linear-identity crux): the agent's
+    only write to a report doc is `save_document` (the body) — it **never** `save_comment`s
+    on a report doc, so every comment there is operator-authored by construction. Hardened
+    by an operator-id allowlist + an opaque `reports.reviewToken` sentinel; distillation
+    reads only the operator comment's own text (never `quotedText`/body/rolled-up content).
+  - **§16 guardrails (all mandatory):** Linear-bound bodies carry only summary prose +
+    counts + IDs/SHAs (never captured tool/log/deploy output); a fail-closed scrub backstop
+    keeps any match local-only and writes a content-free `[withheld to local]` marker;
+    `signal-agent` local-only by default (`ops`/`dev` recommended) via
+    `reports.localOnlyAgents`; init takes an operator attestation + warns of the widened
+    audience.
+  - **Mechanics stay machine-local + deterministic:** `lessons.md`, the acted-review
+    ledger, the doc-id cache (`reports-state.json`), and the per-agent O_EXCL report-lock
+    never leave disk; markers via `date +%F`/`+%G-W%V`/`+%Y-%m` + strict heading regex;
+    review-poll coarse-gated (≤1 `list_comments`/hr/agent); assert-namespace-before-write
+    guards against overwriting a real human doc; non-durable storage degrades to a read-only
+    mirror (no infinite re-distill).
+- conventions §22 reworded ("backend-agnostic" → located by `reports.sink`); new §23 +
+  ToC; one bounded clause added to each of the 8 agent §0 lines; config-schema / init /
+  README / RUNNING / plugin.json updated; version 0.9.0→0.10.0.
+
 ## 0.9.0 — reports & operator review (点评 → improve)
 - **One shared reporting + self-improvement capability** (conventions §22) for all 8
   agents — defined once, referenced by a single bounded §0 line per SKILL (not 8 bespoke

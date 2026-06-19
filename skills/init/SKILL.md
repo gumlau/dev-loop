@@ -324,6 +324,21 @@ the loaded `projects.json` (conventions §11/§14). Create any that are **absent
   it to **lazy creation** on each agent's first write (either is fine — note which you
   did). Machine-local, never committed, **§16-bound (no secrets/PII in a report)**. In
   `dry-run`, just print that reports will appear here.
+- **Linear report sink** (conventions §23) — **only if** the operator sets
+  `reports.sink:"linear"` (default `files` needs nothing here). This is the cloud/remote
+  posture and **widens the report audience** from "you, on this machine, never-synced" to
+  "every workspace member + every wired integration + the search index + backups" — say
+  that plainly. On explicit opt-in: (1) provision a **dedicated** reports project/initiative
+  (`reports.linearProject`/`linearInitiative`) separate from the §20 doc-base; (2) resolve
+  and pin the **operator's Linear user id** (the 点评 author allowlist) via `list_users`;
+  (3) confirm `reports.reviewToken` is set to an **opaque** high-entropy string (not a
+  dictionary word — it must never collide with agent/ingested text); (4) get the operator's
+  **attestation** that the reports container has no outbound integration sync and no
+  non-operator subscribers (the MCP can't enumerate integrations, so this can't be
+  runtime-checked); (5) keep `signal-agent` + `ops-agent` + `dev-agent` in
+  `reports.localOnlyAgents` (the **default** — highest-PII × highest-cadence; only remove one
+  if the operator accepts the risk). `reports-state.json` is created lazily by the agents. In
+  `dry-run`, print these steps; provision nothing.
 
 ### Step 7.5 — LOAD: adopt pre-existing tickets (operator-confirmed; never bulk)
 The **one** place an agent may cross the human backlog (conventions §2), and **only**
@@ -371,7 +386,10 @@ what's still needed. One line per check, grouped:
   dated reports there every run, and to critique one, drop a sibling `<report>.review.md`
   next to it — the agent reads an un-acted review at its next run-start and turns it into a
   `lessons.md` rule that changes its working method. Reports are machine-local — **don't
-  sync or share the data dir** (a report may roll up sensitive output, §16).
+  sync or share the data dir** (a report may roll up sensitive output, §16). *(If
+  `reports.sink:"linear"` (§23): reports are Linear Documents in the dedicated reports
+  container and the 点评 is a comment on the doc — name the container, the operator id, and
+  confirm the §23 guardrails were provisioned above.)*
 
 End with a **plain-English verdict**: either *"Ready — you can flip `mode:"live"`
 and launch the agents (`/dev-loop:pm-agent`, `/qa-agent`, `/dev-agent`,

@@ -160,7 +160,9 @@ conversation memory. So to resume after stopping (or a crash, a reboot, a laptop
 sleep): **just launch the agents again** — each re-reads ground truth and continues
 exactly where the board left off. To steer an agent, drop a `<report>.review.md` (点评)
 next to one of its reports — it reads the un-acted review at its next run-start and turns it
-into a `lessons.md` rule.
+into a `lessons.md` rule. *(Running in the cloud with no disk access? Set
+`reports.sink:"linear"` (conventions §23) to read reports + write the 点评 in Linear
+instead — opt-in, default-off, with §16 guardrails.)*
 
 - **Agent View:** background sessions persist across sleep and reappear in `claude
   agents`; they stop only if the machine powers off. After a reboot, re-dispatch the

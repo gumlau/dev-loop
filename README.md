@@ -197,7 +197,7 @@ load-bearing.
 
 ## Status
 
-**v0.9.0** — eight agents: the five inward (PM/QA/Dev/Sweep/Reflect) plus three
+**v0.10.0** — eight agents: the five inward (PM/QA/Dev/Sweep/Reflect) plus three
 **outward** observe-and-file agents (conventions §21) — **Ops** (watches running prod,
 files `incident` Bugs with an anti-flap re-check + dedupe), **Architect** (audits
 whole-codebase tech health on a rotating, SHA-gated dimension, files `tech-debt`
@@ -209,7 +209,9 @@ that scaffolds a fixed-heading PM doc-base.
 Every agent also writes **daily / weekly / monthly reports** to the data dir
 (`<project-key>/reports/<agent>/…`) and **acts on any operator review (点评)** you drop next
 to one (`<report>.review.md`) — turning your critique into a `lessons.md` rule that changes
-how it works (conventions §22).
+how it works (conventions §22). For a cloud / remote runtime, an opt-in
+**`reports.sink:"linear"`** instead hosts reports + the 点评 channel in Linear so you read
+and critique from a browser (default-off; §23).
 The loop coordinates **one or many repos** (`repos[]`; tickets target a repo via a
 `repo:<name>` label, per-repo build/branch/deploy) — single-repo is 100% unchanged.
 Validated end-to-end in an isolated sandbox and battle-tested across long live runs. Autonomy

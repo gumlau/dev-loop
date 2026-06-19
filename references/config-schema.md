@@ -193,17 +193,32 @@ repo, its test environment, and its ship/deploy settings. One file, many product
   (which also seeds the `lessons.md` skeleton next to this file and gathers/writes back
   the per-project fields above WITH the operator — operator-present setup, so asking
   for unknowable values like `repoPath`/`linearProject`/`deploy.command` is expected
-  there, unlike the unattended loop agents). Creates only what's missing. **§22 adds NO
-  new state-file field** — the daily/weekly/monthly report cadence and acted-review status
-  live entirely in the reports tree (newest file per level; `<report>.review.acted`
-  sidecars), so there is no marker to key per-project or reconcile.
+  there, unlike the unattended loop agents). Creates only what's missing. The default
+  **`files`** report sink (§22) adds **NO new state-file field** — the daily/weekly/monthly
+  report cadence and acted-review status live entirely in the reports tree (newest file per
+  level; `<report>.review.acted` sidecars), so there is no marker to key per-project or
+  reconcile. The opt-in **`linear`** sink (§23) adds one machine-local file,
+  `reports-state.json` (doc-id cache + acted-review ledger + `lastReviewPollAt`) — also
+  never committed.
 - **Reports** (optional output, conventions §22; **on by default, no config needed**):
   every agent writes daily / weekly / monthly reports to
   `${CLAUDE_PLUGIN_DATA}/<project-key>/reports/<agent>/{daily,weekly,monthly}/`
-  (machine-local, never committed, backend-agnostic, **§16-bound — no secrets/PII**),
-  created lazily on first write (or scaffolded by `/dev-loop:init`). The operator may
-  critique any report by dropping a sibling `<report>.review.md`; the agent reads an
-  un-acted review at run-start and distills it into a `lessons.md` rule under its own
-  section (§22). Retention default ≈ **90 days of dailies** (tune per product); roll-ups
-  preserve the summaries. No config key is required — an operator who writes no review just
-  gets dated files to read or ignore.
+  (machine-local, never committed, located by `reports.sink` — independent of the §18
+  backend, **§16-bound — no secrets/PII**), created lazily on first write (or scaffolded by
+  `/dev-loop:init`). The operator may critique any report by dropping a sibling
+  `<report>.review.md`; the agent reads an un-acted review at run-start and distills it into
+  a `lessons.md` rule under its own section (§22). Retention default ≈ **90 days of dailies**
+  (tune per product); roll-ups preserve the summaries. No config key is required — an
+  operator who writes no review just gets dated files to read or ignore.
+- **`reports.sink`** (optional, conventions §23; **absent ⇒ `"files"`**): `"files"` (the
+  default machine-local tree above) or `"linear"` (route the report **body** + the 点评
+  channel to Linear — for a **cloud / remote** runtime where the operator can't reach the
+  data dir; reads/reviews happen in a browser). **Decoupled from the §18 `backend`** (a
+  `linear` backend does not auto-enable it). The `linear` sink trades away a §16
+  defense-in-depth layer (Linear is hosted/shared/searchable), so it is **opt-in, never the
+  default**, and carries the §23 guardrails. Linear-sink-only keys:
+  `reports.linearProject` / `reports.linearInitiative` (the **dedicated** reports container,
+  never the §20 doc-base), `reports.localOnlyAgents` (agents pinned to files regardless —
+  **defaults to `signal-agent` + `ops-agent` + `dev-agent`**, the highest-PII authors), and
+  `reports.reviewToken` (the operator's **opaque** high-entropy 点评 sentinel — not a
+  dictionary word). `lessons.md` stays machine-local in both sinks.
