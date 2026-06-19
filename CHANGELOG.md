@@ -3,6 +3,43 @@
 All notable changes to the dev-loop plugin. Most of these landed from **live-loop
 experience** — a real failure observed while the agents ran, then hardened into a rule.
 
+## 0.9.0 — reports & operator review (点评 → improve)
+- **One shared reporting + self-improvement capability** (conventions §22) for all 8
+  agents — defined once, referenced by a single bounded §0 line per SKILL (not 8 bespoke
+  impls). Additive and **on by default**; the back-compat invariant is narrow — **no change
+  to ticket / product / board behavior** (the only added effects are local report files +
+  a cheap review-glob at run-start).
+  - **Reports** live in the data dir, machine-local / never-committed / backend-agnostic /
+    §16-bound (no secrets/PII): `${CLAUDE_PLUGIN_DATA}/<project-key>/reports/<agent>/{daily,
+    weekly,monthly}/`. Created lazily (init may scaffold).
+  - **Cadence from the reports tree itself** (newest file per level — **no new state-file
+    field**), computed deterministically (`date +%F` / `+%G-W%V` / `+%Y-%m`, ISO-week-safe).
+    The **daily is an append-only running log written at close** (one terse entry per fire;
+    **a pure no-op fire appends nothing** — proportional to work, not the ~288 fires/day).
+    First fire of a new day finalizes yesterday's; new ISO week / month roll up **from the
+    dailies** (the one durable level — ISO weeks don't partition months). Gaps → `idle — no
+    activity`, never fabricated. Retention ≈ 90 days of dailies; atomic-write (temp+rename).
+  - **Operator review (点评)** via one canonical, spoof-proof channel — a sibling
+    `<report>.review.md` the agent did **not** author (ticket / log / source text is **never**
+    a review channel, closing the prompt-injection path into the firewall). At run-start each
+    agent acts on an un-acted review → distills it into a `lessons.md` rule **under its own
+    section** (§14), marks it acted with a **machine-owned `.review.acted` sidecar** (never
+    edits the operator's prose), surfaces it in the close-report, and has a terminal
+    `acted → no actionable change` outcome (no infinite re-distill, no silent drop).
+- **§17 firewall relaxed, carefully**: an agent MAY write into ITS OWN `lessons.md` section
+  when distilling an explicit operator review of its OWN report — the written review is the
+  human authorization §17 requires. Five hard limits: own section only (`## Shared` stays
+  Reflect-only), real cited review only, §14 budget, structural changes still proposals
+  (`[<agent>-proposal]`), reported + dry-run-gated. **`lessons.md` is now multi-writer** →
+  every edit is a **locked read-modify-write** (§18 lock) to prevent lost updates. Reflect
+  stays the autonomous curator + the only agent that may touch others' sections or `Shared`,
+  and its GC audits/prunes review-driven rules. **Reflect's daily retro doubles as its §22
+  daily report** (no double-write); its weekly/monthly are the loop-level cross-agent
+  roll-ups.
+- **init** scaffolds (or notes lazy creation of) the reports tree, warns not to sync the
+  data dir, and tells the operator the 点评 channel. **README / RUNNING / config-schema /
+  plugin.json** updated; one bounded §0 line added to each of the 8 agent SKILLs.
+
 ## 0.8.0 — outward agents (Ops / Architect / Signal)
 - **Three OUTWARD observe-and-file agents** (conventions §21) join the five inward ones,
   connecting the closed build factory to (a) running prod, (b) whole-codebase health, and

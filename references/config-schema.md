@@ -193,4 +193,17 @@ repo, its test environment, and its ship/deploy settings. One file, many product
   (which also seeds the `lessons.md` skeleton next to this file and gathers/writes back
   the per-project fields above WITH the operator — operator-present setup, so asking
   for unknowable values like `repoPath`/`linearProject`/`deploy.command` is expected
-  there, unlike the unattended loop agents). Creates only what's missing.
+  there, unlike the unattended loop agents). Creates only what's missing. **§22 adds NO
+  new state-file field** — the daily/weekly/monthly report cadence and acted-review status
+  live entirely in the reports tree (newest file per level; `<report>.review.acted`
+  sidecars), so there is no marker to key per-project or reconcile.
+- **Reports** (optional output, conventions §22; **on by default, no config needed**):
+  every agent writes daily / weekly / monthly reports to
+  `${CLAUDE_PLUGIN_DATA}/<project-key>/reports/<agent>/{daily,weekly,monthly}/`
+  (machine-local, never committed, backend-agnostic, **§16-bound — no secrets/PII**),
+  created lazily on first write (or scaffolded by `/dev-loop:init`). The operator may
+  critique any report by dropping a sibling `<report>.review.md`; the agent reads an
+  un-acted review at run-start and distills it into a `lessons.md` rule under its own
+  section (§22). Retention default ≈ **90 days of dailies** (tune per product); roll-ups
+  preserve the summaries. No config key is required — an operator who writes no review just
+  gets dated files to read or ignore.

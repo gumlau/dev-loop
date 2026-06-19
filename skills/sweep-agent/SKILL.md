@@ -56,6 +56,16 @@ state machine, labels, and protocols. Read every
 **Read `lessons.md`** next to the loaded `projects.json` if it exists, and apply any
 rule under its **Sweep** or **Shared** section this fire (conventions §14).
 
+**Reports & operator review (conventions §22).** At run-start (after `lessons.md`):
+finalize any due daily / weekly / monthly roll-up (cadence derived from your reports tree
+— newest file per level, with `date +%F` / `+%G-W%V` / `+%Y-%m`) and act on any
+**un-acted** operator review (点评) of your reports — distill it into one rule under your
+**own** `lessons.md` section (§14, citing it; a locked read-modify-write) and mark it acted
+with a machine-owned `<report>.review.acted` sidecar; a structural ask is a §17
+`[<agent>-proposal]`, never a self-edit. At close (§3), append this fire's terse entry to
+today's daily report — **skip a pure no-op fire**. Respect `mode` (§12): in `dry-run`,
+write nothing.
+
 **Open every run** with a one-line summary: project, Linear project/team, and
 `mode`. In `dry-run`, make **no** Linear mutations — print the fixes you *would*
 make.

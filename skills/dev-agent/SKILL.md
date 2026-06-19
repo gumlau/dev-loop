@@ -58,6 +58,16 @@ token, §18).
 rule under its **Dev** or **Shared** section this fire (conventions §14). A lesson
 can pre-empt an action — if a rule would have you skip or block something, honor it.
 
+**Reports & operator review (conventions §22).** At run-start (after `lessons.md`):
+finalize any due daily / weekly / monthly roll-up (cadence derived from your reports tree
+— newest file per level, with `date +%F` / `+%G-W%V` / `+%Y-%m`) and act on any
+**un-acted** operator review (点评) of your reports — distill it into one rule under your
+**own** `lessons.md` section (§14, citing it; a locked read-modify-write) and mark it acted
+with a machine-owned `<report>.review.acted` sidecar; a structural ask is a §17
+`[<agent>-proposal]`, never a self-edit. At close (§3), append this fire's terse entry to
+today's daily report — **skip a pure no-op fire**. Respect `mode` (§12): in `dry-run`,
+write nothing.
+
 **Open every run** with a one-line summary: project, Linear project/team,
 `repoPath`, `mode`, and `autonomy` (§12a). Also state the ship policy you'll follow from config
 (`autoCommit`/`autoPush`/`autoDeploy` + `deploy.command`) so the user knows

@@ -32,7 +32,9 @@ It will, with you in the loop:
    / Non-goals / Current state / Personas / Glossary / Decisions / Candidate ideas) in
    the doc-home repo, seeding `Current state` from brownfield mapping if available.
 5. Smoke-check the test env + build, create the runtime files
-   (`pm-state.json` / `qa-state.json` / `lessons.md`), and print a **readiness checklist**.
+   (`pm-state.json` / `qa-state.json` / `lessons.md`), note the per-agent **reports tree**
+   (`<key>/reports/<agent>/{daily,weekly,monthly}/`, conventions §22 — scaffolded or created
+   lazily), and print a **readiness checklist**.
 
 When the checklist is green, set `"mode": "live"` in `projects.json` (init leaves new
 projects in `dry-run` for first contact) and launch the agents (next section).
@@ -152,10 +154,13 @@ Agents self-throttle (idle fires are cheap no-ops), so tighter intervals are saf
 ## 5. Resume / restart
 
 **There is no special resume step — the agents are stateless per fire** (conventions §0).
-All state lives in Linear (or the local board), git, and the `*-state.json` files, never
-in conversation memory. So to resume after stopping (or a crash, a reboot, a laptop
+All state lives in Linear (or the local board), git, the `*-state.json` files, and the
+per-agent **reports tree** (`<key>/reports/<agent>/…`, conventions §22), never in
+conversation memory. So to resume after stopping (or a crash, a reboot, a laptop
 sleep): **just launch the agents again** — each re-reads ground truth and continues
-exactly where the board left off.
+exactly where the board left off. To steer an agent, drop a `<report>.review.md` (点评)
+next to one of its reports — it reads the un-acted review at its next run-start and turns it
+into a `lessons.md` rule.
 
 - **Agent View:** background sessions persist across sleep and reappear in `claude
   agents`; they stop only if the machine powers off. After a reboot, re-dispatch the

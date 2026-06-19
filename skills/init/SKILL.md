@@ -292,7 +292,9 @@ the loaded `projects.json` (conventions §11/§14). Create any that are **absent
   # dev-loop lessons — per-operator corrections (local, never committed)
   <!-- Bounded working set (conventions §14): ≤ ~6 rules/section, ≤ ~150 lines total.
        Each rule cites evidence + carries `added:`/`last-seen:`. Reflect expires stale
-       rules and promotes durable ones into conventions — keep this file flat, not growing. -->
+       rules and promotes durable ones into conventions — keep this file flat, not growing.
+       Reflect autonomously curates this file; any agent may also add a rule under its OWN
+       section when distilling an operator review (点评) of its report (conventions §22). -->
 
   ## Shared
 
@@ -317,6 +319,11 @@ the loaded `projects.json` (conventions §11/§14). Create any that are **absent
   `lessons.md` already exists, **don't touch it** (don't reorder or inject headers
   into a file the operator owns); just note its presence. In `dry-run`, print the
   files you'd create.
+- **Reports tree** (conventions §22) — `${CLAUDE_PLUGIN_DATA}/<key>/reports/<agent>/{daily,
+  weekly,monthly}/` for each of the 8 agents. You MAY scaffold the empty tree now, or leave
+  it to **lazy creation** on each agent's first write (either is fine — note which you
+  did). Machine-local, never committed, **§16-bound (no secrets/PII in a report)**. In
+  `dry-run`, just print that reports will appear here.
 
 ### Step 7.5 — LOAD: adopt pre-existing tickets (operator-confirmed; never bulk)
 The **one** place an agent may cross the human backlog (conventions §2), and **only**
@@ -359,6 +366,12 @@ what's still needed. One line per check, grouped:
 - **Test env**: `setup` ran; reachability smoke.
 - **Build**: typecheck/build run clean.
 - **Runtime files**: `pm-state.json`, `qa-state.json`, `lessons.md` present.
+- **Reports & review** (§22): the `<key>/reports/<agent>/{daily,weekly,monthly}/` tree
+  (scaffolded now, or created lazily on first run). **Tell the operator:** each agent writes
+  dated reports there every run, and to critique one, drop a sibling `<report>.review.md`
+  next to it — the agent reads an un-acted review at its next run-start and turns it into a
+  `lessons.md` rule that changes its working method. Reports are machine-local — **don't
+  sync or share the data dir** (a report may roll up sensitive output, §16).
 
 End with a **plain-English verdict**: either *"Ready — you can flip `mode:"live"`
 and launch the agents (`/dev-loop:pm-agent`, `/qa-agent`, `/dev-agent`,
