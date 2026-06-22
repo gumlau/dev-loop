@@ -4,6 +4,13 @@ All notable changes to the dev-loop plugin. Most of these landed from **live-loo
 experience** — a real failure observed while the agents ran, then hardened into a rule.
 
 ## Unreleased
+- **docs(readme): clarify backend-pluggable framing (LOOP-8).** The README opener,
+  How-it-works bullet, and Requirements no longer frame Linear as mandatory — the
+  loop has been backend-pluggable (`backend:"linear"` default | `backend:"local"`)
+  since v0.5.0 (conventions §18), so "Linear is the only channel" is now
+  "Ticket state is the only channel", and Linear MCP / a Linear team are documented
+  as conditional on `backend:"linear"`. No SKILL or `references/conventions.md`
+  edits (§17); the substantive `local` story already lives correctly in §18.
 - **Launcher: multi-project, no cross-project clobber (LOOP-2).** The tmux launcher
   now lives in the plugin repo as the canonical `scripts/run-loop.sh` (operators
   install via `cp scripts/run-loop.sh ~/.claude/plugins/data/dev-loop/run-loop.sh`).

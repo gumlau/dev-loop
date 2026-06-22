@@ -2,11 +2,12 @@
 
 Eight autonomous agents — **PM**, **QA**, **Dev**, **Sweep**, **Reflect**, **Ops**,
 **Architect**, and **Signal** — that run a software-development loop **coordinated
-entirely through Linear ticket state**. They never call each other directly; Linear is
-the shared blackboard. Five are inward / build-facing; three (Ops/Architect/Signal) are
-**outward** observe-and-file agents that connect the loop to running prod,
-whole-codebase health, and real users. Trigger each one manually, or run them on a
-schedule, and the product builds and improves itself.
+entirely through ticket state** (Linear by default, or a machine-local file board —
+see [§18](references/conventions.md)). They never call each other directly; the
+ticket board is the shared blackboard. Five are inward / build-facing; three
+(Ops/Architect/Signal) are **outward** observe-and-file agents that connect the loop
+to running prod, whole-codebase health, and real users. Trigger each one manually,
+or run them on a schedule, and the product builds and improves itself.
 
 ```
         PM ──proposes feature──┐                 ┌──QA proposes bug──┐
@@ -23,8 +24,9 @@ schedule, and the product builds and improves itself.
 
 ## How it works
 
-- **Linear is the only channel.** No agent calls another. Each reads and writes Linear
-  ticket state (plus git), so any agent can run at any time, in any order, even
+- **Ticket state is the only channel.** No agent calls another. Each reads and writes
+  ticket state (plus git) — Linear or a machine-local file board, the agents work the
+  same against either — so any agent can run at any time, in any order, even
   concurrently. A ticket's labels carry everything: eligibility, owner, and routing.
 - **Owner labels route the work.** `pm` owns Features, `qa` owns Bugs; the **owner
   files and verifies**, Dev implements everyone's tickets. This is how a finished build
@@ -72,9 +74,14 @@ claim / dedupe / blocked protocols, and the self-evolution boundary — live in
 ## Requirements
 
 - **Claude Code** with this plugin installed.
-- **Linear MCP** connected (`mcp__linear-server__*` tools) — the coordination substrate.
 - **`gh` CLI** authenticated — Dev uses it for git/deploy operations.
-- A **git repo** for the product, and a **Linear team + project** the loop may own.
+- A **git repo** for the product.
+- **Per backend** — pick one in `projects.json`:
+  - `backend:"linear"` (default) needs **Linear MCP** connected (`mcp__linear-server__*`
+    tools) and a **Linear team + project** the loop may own.
+  - `backend:"local"` needs **neither** — the board lives in a machine-local file
+    store next to `projects.json` and is created by `/dev-loop:init` (see
+    [conventions §18](references/conventions.md)).
 - Per-role: `repoPath` (Dev), `strategyDoc` (PM), `testEnv` (QA) — see Configure.
 
 ## Install
