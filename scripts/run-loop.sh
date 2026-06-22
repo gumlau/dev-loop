@@ -44,6 +44,71 @@
 
 set -euo pipefail
 
+# --help / -h — print usage and exit before ANY project resolution, cfg()
+# call, projects.json read, or precondition check. An operator's first
+# instinct on any CLI is to ask for help; meet them there even on a fresh
+# machine without claude/tmux/python3 installed (LOOP-16).
+for _arg in "$@"; do
+  case "$_arg" in
+    --help|-h)
+      cat <<'USAGE'
+dev-loop launcher — opens a tmux session PER PROJECT, one window per agent,
+each a headless `claude` loop. Reads project/mode/autonomy/models from
+projects.json.
+
+Usage:
+  run-loop.sh                          # defaultProject: PM/QA/Dev + Sweep, looping
+  run-loop.sh boardku                  # one project (positional)
+  run-loop.sh a b c                    # many projects (positional)
+  PROJECT=foo            run-loop.sh   # one project (env)
+  PROJECTS="a b c"       run-loop.sh   # many projects (env, space-separated)
+  PROJECTS=all           run-loop.sh   # every project in projects.json (alphabetical)
+  PROJECTS=""            run-loop.sh   # same as PROJECTS=all
+  RESTART=1              run-loop.sh   # kill+relaunch listed projects already running
+  run-loop.sh --restart                # alias for RESTART=1
+
+Env:
+  PROJECT       one project (overridden by positional / PROJECTS)
+  PROJECTS      space-separated list, or "all" / "" for every project
+  MODE          once → one pass per agent, then stop; default: loop forever
+  SWEEP         1 (default) / 0 — include the Sweep janitor
+  REFLECT       1 — also run the daily Reflect retrospective (default 0)
+  OPS           1 — also run the outward Ops agent (default 0)
+  ARCHITECT     1 — also run the outward Architect agent (default 0)
+  SIGNAL        1 — also run the outward Signal agent (default 0)
+  RESTART       1 — kill+relaunch any listed project's existing session
+
+Flags:
+  --restart     alias for RESTART=1
+  --help, -h    show this message and exit (precondition-free — works without
+                claude / tmux / python3 / projects.json)
+
+Examples:
+  bash scripts/run-loop.sh boardku
+  PROJECTS=all bash scripts/run-loop.sh
+  MODE=once bash scripts/run-loop.sh boardku
+
+Each project gets its own tmux session named `dev-loop-<project>`, so parallel
+loops never clobber each other. A second invocation that lists the same project
+is a no-op by default ("already running, skipping"); set RESTART=1 to relaunch
+only that one — sibling sessions are never touched. Logs land in
+$DATA_DIR/logs/<project>/.
+
+tmux ops:
+  List loops :  tmux ls | grep '^dev-loop-'
+  Attach     :  tmux attach -t dev-loop-<project>     (Ctrl-b d to detach)
+  Stop one   :  tmux kill-session -t dev-loop-<project>
+  Stop all   :  tmux ls -F '#{session_name}' 2>/dev/null | grep '^dev-loop-' | xargs -n1 tmux kill-session -t
+
+Test-overridable env (rarely set by hand — used by scripts/smoke-run-loop.sh):
+  DATA_DIR      override the data dir root (default $HOME/.claude/plugins/data/dev-loop)
+  CLAUDE_BIN    override the `claude` binary (default `claude` on PATH)
+USAGE
+      exit 0
+      ;;
+  esac
+done
+
 DATA_DIR="${DATA_DIR:-$HOME/.claude/plugins/data/dev-loop}"
 CONFIG="$DATA_DIR/projects.json"
 LOG_DIR="$DATA_DIR/logs"

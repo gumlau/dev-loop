@@ -20,6 +20,7 @@ TEST_MODULES=(
   tests.test_dl_status
   tests.test_lint_plugin
   tests.test_run_loop_smoke
+  tests.test_run_loop_help
 )
 
 python3 -m unittest -v "${TEST_MODULES[@]}"
