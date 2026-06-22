@@ -32,6 +32,11 @@ Rules (one per AC in LOOP-4):
                       `tmux ... -t dev-loop` session — the launcher only
                       creates `dev-loop-<project>` sessions, so a bare name
                       is stale post-LOOP-2 doc drift (LOOP-13)
+  md-link-fragments   every relative `[text](path#fragment)` link in the
+                      docs set resolves to a `## <heading>` (or deeper)
+                      in the target file, by GitHub-flavored slug — sibling
+                      of md-links (path-existence) for the slug side
+                      (LOOP-19, follow-up to LOOP-14 AC#4)
 
 §17 boundary: this script is a READ-ONLY detector. It NEVER edits
 references/conventions.md or any skills/*/SKILL.md — findings about those
@@ -453,6 +458,118 @@ def check_tmux_session_name_consistency(root: Path) -> list[Finding]:
     return findings
 
 
+# GitHub-flavored heading-slug builder for the md-link-fragments rule
+# (LOOP-19). Matches GitHub's algorithm closely enough that every existing
+# `path#fragment` link in this repo resolves cleanly (AC#2/AC#6 — the canon
+# is the in-repo links themselves):
+#   1. lowercase
+#   2. strip anything that isn't a unicode letter, digit, whitespace,
+#      hyphen, or underscore (so `.`, `—`, `` ` ``, `(`, `)`, `&`, `/` all
+#      vanish without a separator — `reports.sink` → `reportssink`)
+#   3. whitespace → `-`, runs PRESERVED (`directive — every` → `directive--every`)
+_HEADING_LINE = re.compile(r"^(#{2,6})\s+(.+?)\s*$")
+_SLUG_STRIP = re.compile(r"[^\w\s\-]", re.UNICODE)
+_SLUG_WS = re.compile(r"\s")
+
+
+def _slugify(text: str) -> str:
+    s = text.lower()
+    s = _SLUG_STRIP.sub("", s)
+    s = _SLUG_WS.sub("-", s)
+    return s
+
+
+def _heading_slugs(text: str) -> set[str]:
+    """Slugs of every `##`-or-deeper heading in `text`, ignoring fenced
+    code blocks (where a leading `#` is python/bash, not a heading)."""
+    slugs: set[str] = set()
+    in_fence = False
+    for raw_line in text.splitlines():
+        if raw_line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        m = _HEADING_LINE.match(raw_line)
+        if not m:
+            continue
+        slugs.add(_slugify(m.group(2)))
+    return slugs
+
+
+def check_md_link_fragments(root: Path) -> list[Finding]:
+    """For each `[text](path#fragment)` link in the docs set, validate that
+    `#fragment` resolves to a `## <heading>` (or deeper) in the target
+    file's GitHub-flavored slugs. Sibling of `check_md_links` — that one
+    validates the path-half exists; this one validates the slug-half.
+    Same target set, same fenced/code-span skip, same relative-resolution.
+
+    Skipped: links whose path-half is missing (delegated to `check_md_links`),
+    non-`.md` targets (we only know how to slug markdown headings), and
+    external schemes (http/https/mailto)."""
+    findings: list[Finding] = []
+    targets: list[Path] = []
+    for name in ("README.md", "CHANGELOG.md"):
+        f = root / name
+        if f.exists():
+            targets.append(f)
+    for sub in ("docs", "references"):
+        d = root / sub
+        if d.exists():
+            targets += sorted(d.glob("*.md"))
+    skills_dir = root / "skills"
+    if skills_dir.exists():
+        targets += sorted(skills_dir.glob("*/SKILL.md"))
+
+    slug_cache: dict[Path, set[str]] = {}
+
+    def slugs_for(p: Path) -> set[str]:
+        rp = p.resolve()
+        cached = slug_cache.get(rp)
+        if cached is None:
+            try:
+                cached = _heading_slugs(_read_text(p))
+            except OSError:
+                cached = set()
+            slug_cache[rp] = cached
+        return cached
+
+    for t in targets:
+        text = _read_text(t)
+        in_fence = False
+        for lineno, raw_line in enumerate(text.splitlines(), 1):
+            if raw_line.lstrip().startswith("```"):
+                in_fence = not in_fence
+                continue
+            if in_fence:
+                continue
+            line = _strip_code_spans(raw_line)
+            for m in _MD_LINK.finditer(line):
+                target = m.group(2).strip()
+                if "#" not in target:
+                    continue
+                path_part, frag = target.split("#", 1)
+                if not frag:
+                    continue
+                if path_part.startswith(("http://", "https://", "mailto:")):
+                    continue
+                if path_part:
+                    resolved = (t.parent / path_part).resolve()
+                    if not resolved.exists() or not resolved.is_file():
+                        continue  # path-half failure is check_md_links' job
+                else:
+                    resolved = t.resolve()  # in-page anchor
+                if resolved.suffix.lower() != ".md":
+                    continue
+                if frag not in slugs_for(resolved):
+                    findings.append(
+                        f"md-link-fragments: {_rel(t, root)}:{lineno} "
+                        f"#{frag} resolves to no `##`-or-deeper heading in "
+                        f"{_rel(resolved, root)}"
+                    )
+    return findings
+
+
 RULES: list[Callable[[Path], list[Finding]]] = [
     check_json_integrity,
     check_skill_frontmatter,
@@ -462,6 +579,7 @@ RULES: list[Callable[[Path], list[Finding]]] = [
     check_agent_consistency,
     check_shell_example_syntax,
     check_tmux_session_name_consistency,
+    check_md_link_fragments,
 ]
 
 

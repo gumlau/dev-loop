@@ -81,6 +81,13 @@ class TestLintPluginNegative(unittest.TestCase):
         # never creates (it only creates `dev-loop-<project>`).
         self.assert_rule_found("tmux", "tmux-session-name-consistency")
 
+    def test_md_link_fragments(self):
+        # Catches the LOOP-14 AC#4 / LOOP-19 class: a `[text](path#fragment)`
+        # link whose path-half exists (so `md-links` is silent) but whose
+        # `#fragment` slug does not resolve to any `##`-or-deeper heading
+        # in the target file.
+        self.assert_rule_found("mdlinkfrag", "md-link-fragments")
+
 
 class TestLintPluginPositive(unittest.TestCase):
     """The lint must exit zero on the real repo (LOOP-4 AC #9)."""
