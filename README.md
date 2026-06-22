@@ -234,6 +234,65 @@ trail** — no code or skill edits.
   [conventions §22](references/conventions.md#22-reports--operator-review--daily--weekly--monthly)
   + [§23](references/conventions.md#23-reports-in-linear--the-reportssink-option).
 
+## Run the dashboard
+
+A read-only local web view over the data dir — at-a-glance kanban of every
+onboarded loop. Standalone, on-demand (the dashboard is a separate process the
+operator runs; it adds **no** server dependency to the loop itself). Zero
+external Python deps, works offline, binds `127.0.0.1` only.
+
+```
+$ python3 -m tools.dashboard
+dev-loop dashboard running at http://127.0.0.1:5173  (data dir: ~/.claude/plugins/data/dev-loop)
+```
+
+Then open the URL. The **index** lists every project under your data dir's
+`<key>/board/`; click into one to see its kanban:
+
+```
+boardku · kanban
+┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
+│   Todo  (4)  │ │ In Progress  │ │  In Review   │ │   Done (12)  │
+├──────────────┤ ├──────────────┤ ├──────────────┤ ├──────────────┤
+│ BK-17        │ │ BK-15        │ │ BK-14        │ │ BK-13        │
+│ Add CSV exp… │ │ Refactor sto…│ │ Fix login bo…│ │ Bug repro fl…│
+│ [Feat][pm]   │ │ [Bug][qa]    │ │ [Bug][qa]    │ │ [Feat][pm]   │
+│ High · 2d    │ │ Med  · 1d    │ │ High · 0d    │ │ High · 4d    │
+└──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘
+   (Other: 1 Canceled — collapsed below)
+```
+
+**Flags**
+
+| Flag | Default | Notes |
+|---|---|---|
+| `--port N` | `5173` | TCP port to listen on |
+| `--data-dir PATH` | `$DEVLOOP_DATA_DIR` or `~/.claude/plugins/data/dev-loop` | Where to discover `<project>/board/` |
+| `--host H` | `127.0.0.1` | Loopback only by design — override at your own risk |
+
+**Discovery rule.** A project shows up if `<data-dir>/<key>/board/` exists. An
+empty board (no `tickets/` yet) is listed as **"no tickets yet"**, not an error.
+The four canonical columns are `Todo / In Progress / In Review / Done`;
+`Canceled`, `Duplicate`, and `Backlog` collapse into an "Other" pile below them.
+
+**Read-only.** The dashboard never writes — no ticket mutations, no state-file
+writes; it re-reads the board files on each request. Refresh the page to pick
+up any edit you (or an agent) made on disk.
+
+**Tests.** A self-test suite lives under `tests/test_dashboard.py` and is wired
+into the project's `build.test` gate via `tools/test.sh`:
+
+```
+$ bash tools/test.sh
+ok  .claude-plugin/plugin.json
+ok  config/projects.example.json
+... 11 tests ok ...
+ok  all plugin self-tests passed
+```
+
+Set `build.test: "bash tools/test.sh"` in your `projects.json` entry for this
+project so Dev's gate (Step 5 of the dev-agent skill) runs it before every ship.
+
 ## Status
 
 **v0.10.0** — eight agents: the five inward (PM/QA/Dev/Sweep/Reflect) plus three
