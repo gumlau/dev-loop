@@ -84,24 +84,71 @@ Manage from the shell: `claude attach <id>` (open), `claude logs <id>` (recent o
 
 ### B. Local tmux launcher — mixed models, one command
 
-A small launcher (kept in your data dir, **not** part of the plugin) opens a `dev-loop`
-tmux session with one pane per agent, each a headless `claude` loop, and reads your
-per-agent `models` from config so every pane gets its own `--model`:
+A small launcher opens a tmux session **per project**, one pane per agent, each a
+headless `claude` loop, and reads your per-agent `models` from config so every pane
+gets its own `--model`. The canonical copy is in the plugin repo
+(`scripts/run-loop.sh`); operators **install** it by copying it into the data dir
+(it is intentionally not run from the repo path):
 
 ```
-~/.claude/plugins/data/dev-loop/run-loop.sh            # PM/QA/Dev + Sweep; Reflect off
-MODE=once   ~/.claude/plugins/data/dev-loop/run-loop.sh   # one pass each, then stop (good first test)
-REFLECT=1   ~/.claude/plugins/data/dev-loop/run-loop.sh   # also run the daily Reflect pane
-SWEEP=0     ~/.claude/plugins/data/dev-loop/run-loop.sh   # omit the janitor pane
-PROJECT=foo ~/.claude/plugins/data/dev-loop/run-loop.sh   # pick a project key
-OPS=1       ~/.claude/plugins/data/dev-loop/run-loop.sh   # also run the Ops (prod-watch) pane (~10m; off by default)
-ARCHITECT=1 ~/.claude/plugins/data/dev-loop/run-loop.sh   # also run the Architect (tech-debt) pane (daily; off by default)
-SIGNAL=1    ~/.claude/plugins/data/dev-loop/run-loop.sh   # also run the Signal (user-intake) pane (hourly; off; no-op if no sources)
+cp scripts/run-loop.sh ~/.claude/plugins/data/dev-loop/run-loop.sh
+chmod +x ~/.claude/plugins/data/dev-loop/run-loop.sh
 ```
 
-It prints a blast-radius banner (project, mode, autonomy, ship flags, models) before
-starting. Detach `Ctrl-b d` · reattach `tmux attach -t dev-loop` · stop all
-`tmux kill-session -t dev-loop`. Logs tee to `~/.claude/plugins/data/dev-loop/logs/`.
+When the canonical changes (a new `dev-loop` release), re-run the copy.
+
+#### One project
+
+```
+~/.claude/plugins/data/dev-loop/run-loop.sh                # defaultProject: PM/QA/Dev + Sweep; Reflect off
+~/.claude/plugins/data/dev-loop/run-loop.sh boardku        # positional: pick a project key
+PROJECT=foo ~/.claude/plugins/data/dev-loop/run-loop.sh    # env equivalent
+MODE=once   ~/.claude/plugins/data/dev-loop/run-loop.sh    # one pass each, then stop (good first test)
+REFLECT=1   ~/.claude/plugins/data/dev-loop/run-loop.sh    # also run the daily Reflect pane
+SWEEP=0     ~/.claude/plugins/data/dev-loop/run-loop.sh    # omit the janitor pane
+OPS=1       ~/.claude/plugins/data/dev-loop/run-loop.sh    # also run the Ops (prod-watch) pane (~10m; off by default)
+ARCHITECT=1 ~/.claude/plugins/data/dev-loop/run-loop.sh    # also run the Architect (tech-debt) pane (daily; off by default)
+SIGNAL=1    ~/.claude/plugins/data/dev-loop/run-loop.sh    # also run the Signal (user-intake) pane (hourly; off; no-op if no sources)
+```
+
+#### Launch multiple projects (no cross-project clobber)
+
+To run several onboarded loops in parallel — each in its own isolated tmux session
+named **`dev-loop-<project-key>`**, so two sessions never share a name and a second
+launch cannot hard-kill a sibling:
+
+```
+PROJECTS="boardku citron-geo" ~/.claude/plugins/data/dev-loop/run-loop.sh    # explicit set
+PROJECTS=all                  ~/.claude/plugins/data/dev-loop/run-loop.sh    # every project in projects.json (alphabetical)
+PROJECTS=""                   ~/.claude/plugins/data/dev-loop/run-loop.sh    # same as PROJECTS=all
+~/.claude/plugins/data/dev-loop/run-loop.sh boardku citron-geo               # positional equivalent
+```
+
+Pre-flight, the launcher validates every requested project key against
+`projects.json` **before** killing or launching anything — an unknown key aborts
+with no partial state.
+
+**Re-launch is opt-in.** A listed project whose `dev-loop-<key>` session is
+*already running* is **skipped by default** (logged `already running, skipping`).
+To explicitly relaunch one, set `RESTART=1` (or pass `--restart`) — it kills and
+re-creates only the listed project's session; siblings are never touched:
+
+```
+PROJECTS="boardku" RESTART=1  ~/.claude/plugins/data/dev-loop/run-loop.sh    # restarts boardku, untouched otherwise
+PROJECTS="boardku" --restart  ~/.claude/plugins/data/dev-loop/run-loop.sh    # equivalent
+```
+
+Operate on the running set with the standard tmux tools:
+
+```
+tmux ls | grep '^dev-loop-'                                                 # list every dev-loop session
+tmux attach -t dev-loop-<project>                                           # attach (Ctrl-b d to detach)
+tmux kill-session -t dev-loop-<project>                                     # stop one
+tmux ls -F '#{session_name}' | grep '^dev-loop-' | xargs -n1 tmux kill-session -t   # stop all
+```
+
+It prints a blast-radius banner (per project: mode, autonomy, agent set, session
+name) before starting. Logs tee to `~/.claude/plugins/data/dev-loop/logs/<project>/`.
 
 ---
 

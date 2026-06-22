@@ -18,6 +18,7 @@ python3 scripts/lint-plugin.py
 TEST_MODULES=(
   tests.test_dashboard
   tests.test_lint_plugin
+  tests.test_run_loop_smoke
 )
 
 python3 -m unittest -v "${TEST_MODULES[@]}"

@@ -3,6 +3,27 @@
 All notable changes to the dev-loop plugin. Most of these landed from **live-loop
 experience** — a real failure observed while the agents ran, then hardened into a rule.
 
+## Unreleased
+- **Launcher: multi-project, no cross-project clobber (LOOP-2).** The tmux launcher
+  now lives in the plugin repo as the canonical `scripts/run-loop.sh` (operators
+  install via `cp scripts/run-loop.sh ~/.claude/plugins/data/dev-loop/run-loop.sh`).
+  - `PROJECTS="a b c"` env, `PROJECTS=all` / `PROJECTS=""` (every project,
+    alphabetical), or positional args (`./run-loop.sh a b c`) launch many projects
+    at once — each in its own tmux session named **`dev-loop-<project-key>`**, so
+    two sessions never share a name. Single-project flow (`PROJECT=foo` /
+    `./run-loop.sh foo` / defaultProject) is unchanged.
+  - **Re-launch is opt-in.** A listed project whose session already runs is
+    **skipped by default** (logged `already running, skipping`); set `RESTART=1`
+    or pass `--restart` to relaunch only that project — sibling sessions are
+    never touched. Invalid project keys pre-flight-validate against
+    `projects.json` and abort with zero partial state.
+  - **Smoke harness.** `scripts/smoke-run-loop.sh` exercises the full
+    no-clobber + restart + invalid-key behaviour against a sandboxed data dir
+    (PATH-shimmed `claude`, `DATA_DIR` env override); wired into the plugin
+    self-test gate via `tests/test_run_loop_smoke.py` (skips cleanly when tmux
+    is unavailable). `docs/RUNNING.md` and `README.md` document the install
+    step and the multi-project commands.
+
 ## 0.10.0 — optional Linear-hosted reports (`reports.sink`)
 - **Opt-in `reports.sink: "files" | "linear"`** (conventions §23; **absent ⇒ `files`**, so
   v0.9.0 behaves byte-for-byte). `linear` routes the report **body** + the **点评** channel

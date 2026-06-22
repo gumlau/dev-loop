@@ -160,7 +160,25 @@ plugin **ships no harness** — choose how to fire them:
   `/loop 10m /dev-loop:ops-agent`, `/loop 24h /dev-loop:architect-agent`,
   `/loop 1h /dev-loop:signal-agent`. Monitor/attach/stop from one screen.
 - **A local tmux launcher** — one pane per agent, per-agent models in one command.
+  Canonical copy ships in the plugin repo as `scripts/run-loop.sh`; install with
+  `cp scripts/run-loop.sh ~/.claude/plugins/data/dev-loop/run-loop.sh`.
 - **Manually**, one turn at a time, for a single pass.
+
+#### Launch multiple projects
+
+The launcher opens one tmux session **per project**, named `dev-loop-<project-key>`,
+so two sessions never share a name and a second launch cannot hard-kill a sibling:
+
+```
+PROJECTS="boardku citron-geo" ~/.claude/plugins/data/dev-loop/run-loop.sh   # explicit set
+PROJECTS=all                  ~/.claude/plugins/data/dev-loop/run-loop.sh   # every project (alphabetical)
+~/.claude/plugins/data/dev-loop/run-loop.sh boardku citron-geo              # positional equivalent
+```
+
+A listed project whose `dev-loop-<key>` session is already running is **skipped**
+by default; set `RESTART=1` (or pass `--restart`) to relaunch only that one —
+sibling sessions are never touched. Invalid project keys abort cleanly with zero
+partial state. See [`docs/RUNNING.md`](docs/RUNNING.md) for the full guide.
 
 Per-agent **models** (`models` in config): the model is chosen at launch and **defaults
 to `opus` for every agent**; tune an agent **down** (`sonnet`/`haiku`) only to
