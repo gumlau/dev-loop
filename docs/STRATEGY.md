@@ -200,6 +200,48 @@ editing code: correct, safe-by-gates, and pleasant to operate at multi-project s
   and strictly read-only on top of `render_report_page`. Backlog at close:
   Done 7 · In Review 0 pm · 2 pm Todo (LOOP-8, LOOP-10) + 1 pm Todo new
   (LOOP-12) + 3 qa Todo (LOOP-5, LOOP-9, LOOP-11-fixed-pending-QA-verify).
+- **2026-06-23 (T15:00Z)** — 9th PM fire. Non-material HEAD move: `e443d1c` →
+  `e5ae06c`, but the only diff is PM's own prior-fire strategy-doc commit
+  (+31 lines, `docs/STRATEGY.md` only — no product code moved). Per the
+  established pattern (a PM doc commit is bookkeeping, not a product move),
+  `reviewedShas[dev-loop]` stays pinned to `e443d1c`; `strategy-gaps` remains
+  swept clean at that SHA. Rotated to the next un-swept lens at `e443d1c`:
+  **`ux-flows`**. Job A: 0 In Review pm (LOOP-13 is qa-owned). Job B: 0
+  pm-owned blocked; 0 stale `needs-pm` without `blocked`. Job C
+  (`ux-flows` at `e443d1c`): filed **LOOP-16** (P4 Improvement, pm-owned,
+  related to LOOP-2 + LOOP-8). Finding: `scripts/run-loop.sh` carries a rich
+  head-comment usage block (lines 1–44) but offers no runtime `--help`/`-h`
+  handler — `bash scripts/run-loop.sh --help` is parsed as a positional
+  project key, falls through to the project-resolution preflight at line
+  131, and exits 1 with `✗ unknown project key: '--help'`. First-impression
+  CLI dead-end against the north-star goal "Onboarding is a near-no-op"
+  (the CLI-layer continuation of the README-layer fix shipped in LOOP-8).
+  Dedupe: 0 matches in the board for `run-loop.sh --help`; 0 matches in
+  `scripts/run-loop.sh` for `--help|-h)`. Strictly safe-to-edit per
+  `testEnv.notes` (scripts/ is not §17-protected). Other `ux-flows`
+  surfaces examined and explicitly de-prioritized this fire: (a) report-page
+  prev/next-day navigation — minor friction, crumb navigation already works
+  and the reports-strip's weekly/monthly chips cover discovery, lower-value;
+  (b) reports-strip "idle today" agents have no link to last non-idle daily
+  — minor, weekly/monthly chips cover discovery; (c) dashboard surfacing
+  agent logs — genuinely high-value but significant scope (live tailing,
+  truncation, security boundary) and crosses out of pure ux-flows, kept as
+  a Candidate idea. Backlog at close: Done 9 (LOOP-1/2/3/4/6/7/8/9/11) ·
+  In Review 1 qa (LOOP-13) · Todo pm 3 (LOOP-10, LOOP-12, **LOOP-16**) ·
+  Todo qa 2 (LOOP-14, LOOP-15) · Blocked qa 1 (LOOP-5) · In Progress 0.
+  pm Todo backlog now at 3 (still depth-adequate for one Dev fire); the
+  bottleneck remains QA verification on LOOP-13 + working LOOP-14/15.
+  Next un-swept lens at `e443d1c` is **`consistency`** (then
+  `conversion-retention`, `polish-performance`, etc.). Next-fire decision
+  tree: (a) Dev moves any pm Todo → In Review → Job A pickup; (b) HEAD
+  moves with NEW product code beyond `e443d1c` → reset `sweptLensesAtSha`
+  and re-rotate from `strategy-gaps`; (c) operator edits STRATEGY.md
+  (length ≠ current) → doc-watch re-entry; (d) manual `/pm-agent` with
+  no a/b/c → rotate to `consistency` at `e443d1c`. §17 boundary held:
+  pre-existing skills/+conventions dirty tree persists across fires
+  (operator WIP), still not scooped per §7 staging discipline (this fire
+  stages only `docs/STRATEGY.md`).
+
 - **2026-06-22 (T14:19Z)** — 8th PM fire. HEAD moved `a1f5e95` → `e443d1c` with one
   new product commit in the window: **LOOP-13** (qa-filed Bug; Dev shipped at
   `e443d1c` — `docs/RUNNING.md` §5/§6 now use per-project `dev-loop-<project>`
