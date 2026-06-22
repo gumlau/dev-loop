@@ -214,8 +214,11 @@ instead — opt-in, default-off, with §16 guardrails.)*
 - **Agent View:** background sessions persist across sleep and reappear in `claude
   agents`; they stop only if the machine powers off. After a reboot, re-dispatch the
   `/loop …` lines from §2A. To rejoin a specific session: `claude attach <id>`.
-- **tmux launcher:** if the `dev-loop` session is gone, re-run `run-loop.sh`. If it
-  still exists, `tmux attach -t dev-loop`.
+- **tmux launcher:** if your project's `dev-loop-<project>` session is gone, re-run
+  `run-loop.sh` (it picks up where it left off — per-fire stateless agents re-read
+  ground truth from the board, git, and `*-state.json`). If it still exists,
+  `tmux attach -t dev-loop-<project>` to rejoin. List every running loop with
+  `tmux ls | grep '^dev-loop-'`.
 - A single in-flight fire that died mid-ticket is **self-healing**: Dev's Step 0
   reclaims a ticket it left stranded `In Progress` on the next fire (orphan-recovery),
   and Sweep catches the rest.
@@ -225,7 +228,14 @@ instead — opt-in, default-off, with §16 guardrails.)*
 ## 6. Stop
 
 - **Agent View:** `claude stop <id>` per session (or stop them all from the view).
-- **tmux:** `tmux kill-session -t dev-loop`.
+- **tmux:** stop one project with `tmux kill-session -t dev-loop-<project>`, or stop
+  every dev-loop session in one shot with
+  `tmux ls -F '#{session_name}' | grep '^dev-loop-' | xargs -n1 tmux kill-session -t`.
+  Don't use a bare `tmux kill-session -t dev-loop` — the launcher only creates
+  per-project sessions, so that command always fails with "no session found" and
+  **leaves the real `dev-loop-<project>` sessions running** (a hurried operator may
+  read the silent failure as "already stopped" while `autoCommit`/`autoPush`/`autoDeploy`
+  keep firing).
 
 ---
 
