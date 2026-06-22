@@ -117,6 +117,17 @@ editing code: correct, safe-by-gates, and pleasant to operate at multi-project s
   ticket and the enhancement scope as its own. LOOP-7 priority left below LOOP-2 /
   LOOP-4 (P2) because base capabilities (multi-project launcher, plugin self-lint)
   unblock more downstream work than richer dashboard surfaces do.
+- **2026-06-22 (T20:30Z)** — `ux-flows` / `consistency` lens sweep at HEAD `52f8acc`
+  (effective product SHA `2707a63` + PM doc commit). Filed **LOOP-8** (P3, Improvement,
+  pm-owned, related to LOOP-4): README's first impressions still frame Linear as
+  mandatory ("Linear is the only channel" L26; Linear MCP listed as a hard Requirement
+  L75/L77), but `backend:"local"` is the default for every onboarded loop on this
+  machine. README-prose-only fix (in the safe-to-edit zone per `testEnv.notes`); not a
+  §17 conventions/SKILL touch. Other ux-flows / consistency surfaces (the 点评 helper,
+  cross-project status surface, multi-project launcher canonical-in-repo) are already
+  covered by LOOP-2/3/7 or are marginal — kept this fire to one ticket. Note for future
+  fires: the README's `Requirements` list says "Linear MCP **the coordination
+  substrate**" (singular), which is the same staleness as L26; LOOP-8 catches it.
 
 ## Candidate ideas
 
