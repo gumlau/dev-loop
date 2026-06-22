@@ -279,19 +279,56 @@ The four canonical columns are `Todo / In Progress / In Review / Done`;
 writes; it re-reads the board files on each request. Refresh the page to pick
 up any edit you (or an agent) made on disk.
 
-**Tests.** A self-test suite lives under `tests/test_dashboard.py` and is wired
-into the project's `build.test` gate via `tools/test.sh`:
+**Tests.** A self-test suite lives under `tests/` and is wired into the project's
+`build.test` gate via `tools/test.sh`:
 
 ```
 $ bash tools/test.sh
-ok  .claude-plugin/plugin.json
-ok  config/projects.example.json
-... 11 tests ok ...
+ok  lint-plugin: all rules pass
+... 21 tests ok ...
 ok  all plugin self-tests passed
 ```
 
 Set `build.test: "bash tools/test.sh"` in your `projects.json` entry for this
 project so Dev's gate (Step 5 of the dev-agent skill) runs it before every ship.
+
+## Plugin self-lint (typecheck gate)
+
+`scripts/lint-plugin.py` is the typecheck gate for the dev-loop project itself —
+it walks the repo and exits non-zero on any finding. Pure stdlib, no deps. Six
+rules, one per LOOP-4 acceptance criterion:
+
+| Rule | Checks |
+|---|---|
+| `json-integrity` | Every `.json` under `.claude-plugin/`, `config/`, `scripts/`, `tools/` parses cleanly |
+| `skill-frontmatter` | Every `skills/*/SKILL.md` has a YAML frontmatter block with a non-empty `name:` (matching the dir name) and `description:` |
+| `section-refs` | Every `§<N>` in `references/conventions.md` and `skills/*/SKILL.md` resolves to a `## <N>.` heading in `conventions.md` |
+| `md-links` | Every relative `[text](path)` link in `README.md`, `CHANGELOG.md`, `docs/*.md`, `references/conventions.md`, `skills/*/SKILL.md` points at an existing file/dir |
+| `lessons-skeleton` | The canonical lessons skeleton in `skills/init/SKILL.md` carries every section listed in conventions §14's Layout block |
+| `agent-consistency` | Every agent named in conventions §1's Topology table is mentioned in `README.md` AND `CHANGELOG.md` |
+
+Output is one finding per line — `<rule>: <path>:<line> <message>` — so a future
+CI/CD can grep it.
+
+```
+$ python3 scripts/lint-plugin.py            # lint the real repo (cwd = repo root)
+ok  lint-plugin: all rules pass
+
+$ python3 scripts/lint-plugin.py --root .   # explicit root
+```
+
+Negative-test fixtures under `tests/fixtures/lint-bad/<rule>/` exercise each
+rule's trip path; the unit tests in `tests/test_lint_plugin.py` run via
+`bash tools/test.sh`.
+
+§17 boundary: the lint is **read-only**. It NEVER edits `references/conventions.md`
+or any `skills/*/SKILL.md`. Findings about those files are reported and surfaced
+as proposals for the operator.
+
+Wire it as the typecheck gate by setting
+`build.typecheck: "python3 scripts/lint-plugin.py"` in your data-dir
+`projects.json` entry for the dev-loop project (see `config/projects.example.json`
+for the canonical entry).
 
 ## Status
 

@@ -48,6 +48,31 @@
       "build": { "typecheck": "pnpm -r typecheck", "build": "pnpm -r build" },
       "git": { "defaultBranch": "main", "autoCommit": true, "autoPush": true, "autoDeploy": false },
       "blockedStateName": null
+    },
+    "dev-loop": {
+      "_comment": "SELF-CONFIG for the dev-loop plugin itself (meta / dogfooding). Use this verbatim in your data-dir projects.json if you are forking dev-loop. The product IS the agent instructions, so build.typecheck runs scripts/lint-plugin.py (LOOP-4) — a real gate covering JSON integrity, SKILL frontmatter, conventions §N cross-refs, markdown link integrity, lessons.md skeleton parity, and README/CHANGELOG/conventions agent consistency. backend:local because there is no Linear cloud project for the plugin itself.",
+      "linearTeam": "local",
+      "linearProject": "local",
+      "repoPath": "/abs/path/to/dev-loop",
+      "strategyDoc": "docs/STRATEGY.md",
+      "mode": "dry-run",
+      "autonomy": "ask",
+      "backend": "local",
+      "localBoard": null,
+      "ticketPrefix": "LOOP",
+      "testEnv": {
+        "baseUrl": null,
+        "setup": null,
+        "testCommand": null,
+        "notes": "META / dogfooding: this IS the dev-loop plugin source. NOT a web app; no baseUrl. The 'product' is markdown skills + the shared contract + docs + the plugin manifest. build.typecheck runs scripts/lint-plugin.py; build.test runs tools/test.sh (which re-runs the lint and exercises the negative-test fixtures). ⚠ §17: skills/ and references/conventions.md are off-limits to autonomous edits."
+      },
+      "build": {
+        "typecheck": "python3 scripts/lint-plugin.py",
+        "build": null,
+        "test": "bash tools/test.sh"
+      },
+      "git": { "defaultBranch": "main", "autoCommit": true, "autoPush": true, "autoDeploy": false },
+      "blockedStateName": null
     }
   }
 }

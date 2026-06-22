@@ -7,19 +7,17 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-# 1. JSON integrity (mirrors `build.typecheck`, but cheap to repeat here so a
-#    plain `bash tools/test.sh` is a complete gate).
-python3 -c "
-import json, glob
-for f in glob.glob('.claude-plugin/*.json') + ['config/projects.example.json']:
-    with open(f) as fh:
-        json.load(fh)
-    print(f'ok  {f}')
-"
+# 1. Plugin self-lint (LOOP-4) — replaces the old one-line JSON load. Covers
+#    JSON integrity, SKILL frontmatter, conventions §N cross-refs, markdown
+#    link integrity, lessons.md skeleton parity, and README/CHANGELOG/
+#    conventions agent consistency. Folded into this gate so a plain
+#    `bash tools/test.sh` is the complete typecheck+test gate.
+python3 scripts/lint-plugin.py
 
 # 2. Python integration tests.
 TEST_MODULES=(
   tests.test_dashboard
+  tests.test_lint_plugin
 )
 
 python3 -m unittest -v "${TEST_MODULES[@]}"
