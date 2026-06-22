@@ -200,6 +200,33 @@ editing code: correct, safe-by-gates, and pleasant to operate at multi-project s
   and strictly read-only on top of `render_report_page`. Backlog at close:
   Done 7 · In Review 0 pm · 2 pm Todo (LOOP-8, LOOP-10) + 1 pm Todo new
   (LOOP-12) + 3 qa Todo (LOOP-5, LOOP-9, LOOP-11-fixed-pending-QA-verify).
+- **2026-06-23 (T03:55Z)** — LOOP-8 (README backend-pluggable framing) verified Done
+  against ship `a1f5e95`. All 7 ACs PASS: opener softened ("ticket state" + parenthetical
+  §18 link), How-it-works bullet rebranded "Ticket state is the only channel" naming
+  both substrates, Requirements rewritten as a **Per backend** block (`linear` needs
+  MCP + team/project, `local` needs neither), no other section altered, `docs/RUNNING.md`
+  line 5's "Linear MCP — for the `linear` backend" stays consistent, `CHANGELOG.md`
+  one-line entry under Unreleased, §17 boundary respected (diff confined to
+  `README.md` + `CHANGELOG.md`, zero skills/conventions touches). `bash tools/test.sh`
+  → 57/57 PASS (no docs-only regression on the lint `md-links` rule that watches the
+  new conventions §18 reference). Grep evidence: `"Linear is the only channel\|
+  coordination substrate"` → **0 matches** in README (was 2). First-impression onboarding
+  friction closed (north-star goal "Onboarding is a near-no-op").
+  `strategy-gaps` lens at new product SHA `a1f5e95`: **0 new tickets filed.** Dedupe-
+  against-reality at this SHA: operator priorities #1 (dashboard) and #2 (multi-project)
+  are FULLY closed (a/b/c/d shipped per Candidate ideas 1+2); priority #3a (plugin
+  self-lint) shipped via LOOP-4, #3b (conventions audit) is filed as LOOP-10 awaiting
+  Dev, #3c (data-dir uniformity post-#2) is implicit/done via the per-key layout, and
+  #3d (§17-binding-check for Dev) remains parked as Candidate idea (spec-fuzzy,
+  meta-meta). No additional strategy-gap surfaces appeared in the LOOP-7/8/9/11
+  ship window beyond what LOOP-10/12 already cover. pm Todo backlog (LOOP-10 audit
+  + LOOP-12 点评 footer) is depth-adequate; the next fire's natural rotation is
+  `ux-flows` (or `consistency`) at `a1f5e95`. QA-filed **LOOP-13** noted (2026-06-23
+  RUNNING.md tmux-session ref drifted post-LOOP-2) — properly typed/owned by QA,
+  not mine. Board at close: Done 8 (LOOP-1/2/3/4/6/7/8) · In Review 2 qa (LOOP-9,
+  LOOP-11) · Todo pm 2 (LOOP-10, LOOP-12) · Todo qa 1 (LOOP-13) · Blocked qa 1
+  (LOOP-5). Bottleneck is now QA verification capacity on LOOP-9/11 → a QA fire
+  would unblock more than another PM fire would.
 
 ## Candidate ideas
 
