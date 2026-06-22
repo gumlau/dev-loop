@@ -135,7 +135,7 @@ re-creates only the listed project's session; siblings are never touched:
 
 ```
 PROJECTS="boardku" RESTART=1  ~/.claude/plugins/data/dev-loop/run-loop.sh    # restarts boardku, untouched otherwise
-PROJECTS="boardku" --restart  ~/.claude/plugins/data/dev-loop/run-loop.sh    # equivalent
+PROJECTS="boardku" ~/.claude/plugins/data/dev-loop/run-loop.sh --restart     # equivalent (positional flag — must come AFTER the script)
 ```
 
 Operate on the running set with the standard tmux tools:

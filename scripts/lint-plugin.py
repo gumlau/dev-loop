@@ -25,6 +25,9 @@ Rules (one per AC in LOOP-4):
                       the `## 14. Lessons file` Layout block of conventions.md
   agent-consistency   every agent named in conventions §1's Topology table is
                       mentioned in README.md AND CHANGELOG.md
+  shell-example-syntax  fenced shell examples in docs do not put a `--flag`
+                      immediately after a `VAR=value` env prefix (bash treats
+                      the flag as the command and exits 127 — LOOP-9)
 
 §17 boundary: this script is a READ-ONLY detector. It NEVER edits
 references/conventions.md or any skills/*/SKILL.md — findings about those
@@ -322,6 +325,54 @@ def check_agent_consistency(root: Path) -> list[Finding]:
     return findings
 
 
+# Match a malformed shell invocation: one or more `VAR=value` env-prefix
+# assignments at the start of the line, followed by a `--flag` token. Bash
+# applies the env prefix to the next command word, so the `--flag` becomes
+# the command and bash exits 127 with "command not found". This catches
+# the LOOP-9 class of doc-vs-shell drift in fenced shell examples.
+_SHELL_ENV_PREFIX_FLAG = re.compile(
+    r"^\s*[A-Z_][A-Z0-9_]*=\S+(?:\s+[A-Z_][A-Z0-9_]*=\S+)*\s+--\S+"
+)
+
+
+def check_shell_example_syntax(root: Path) -> list[Finding]:
+    """Scan fenced code blocks in docs/, README, CHANGELOG, references/,
+    and skills/*/SKILL.md for the env-prefix-then-flag landmine. Only
+    looks inside fenced blocks (where the lines are actual shell), so
+    prose examples of `--flag` syntax don't trip the rule.
+    """
+    findings: list[Finding] = []
+    targets: list[Path] = []
+    for name in ("README.md", "CHANGELOG.md"):
+        f = root / name
+        if f.exists():
+            targets.append(f)
+    for sub in ("docs", "references"):
+        d = root / sub
+        if d.exists():
+            targets += sorted(d.glob("*.md"))
+    skills_dir = root / "skills"
+    if skills_dir.exists():
+        targets += sorted(skills_dir.glob("*/SKILL.md"))
+    for t in targets:
+        text = _read_text(t)
+        in_fence = False
+        for lineno, raw_line in enumerate(text.splitlines(), 1):
+            if raw_line.lstrip().startswith("```"):
+                in_fence = not in_fence
+                continue
+            if not in_fence:
+                continue
+            if _SHELL_ENV_PREFIX_FLAG.match(raw_line):
+                findings.append(
+                    f"shell-example-syntax: {_rel(t, root)}:{lineno} "
+                    f"env-var prefix followed by `--flag` — bash will exec "
+                    f"`--flag` as the command (exit 127); the flag must "
+                    f"come AFTER the script"
+                )
+    return findings
+
+
 RULES: list[Callable[[Path], list[Finding]]] = [
     check_json_integrity,
     check_skill_frontmatter,
@@ -329,6 +380,7 @@ RULES: list[Callable[[Path], list[Finding]]] = [
     check_md_links,
     check_lessons_skeleton,
     check_agent_consistency,
+    check_shell_example_syntax,
 ]
 
 

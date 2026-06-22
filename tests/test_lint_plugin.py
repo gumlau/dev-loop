@@ -70,6 +70,11 @@ class TestLintPluginNegative(unittest.TestCase):
     def test_agent_consistency(self):
         self.assert_rule_found("agent", "agent-consistency")
 
+    def test_shell_example_syntax(self):
+        # Catches the LOOP-9 class of doc-vs-shell drift: an env-prefix
+        # followed by a `--flag` token inside a fenced shell example.
+        self.assert_rule_found("shell", "shell-example-syntax")
+
 
 class TestLintPluginPositive(unittest.TestCase):
     """The lint must exit zero on the real repo (LOOP-4 AC #9)."""
