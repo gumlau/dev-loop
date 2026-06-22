@@ -4,6 +4,14 @@ All notable changes to the dev-loop plugin. Most of these landed from **live-loo
 experience** — a real failure observed while the agents ran, then hardened into a rule.
 
 ## Unreleased
+- **docs(audit): conventions.md length/redundancy audit (LOOP-10).** New
+  `docs/CONVENTIONS_AUDIT.md` is a §17 proposal report — line-cited findings
+  in four buckets (Redundancies, Movable, Contradictions/staleness, Proposed
+  cuts/moves) against `references/conventions.md` at HEAD. Audit-only: the
+  conventions file is byte-identical post-ticket; operator (or Reflect) applies
+  findings selectively. Projected delta if all seven proposals were applied:
+  ≈ −246 lines (1,569 → ≈ 1,323, ≈ 16%); the first wave (P-1+P-2+P-3) alone
+  is ≈ −179 lines at the lowest risk.
 - **docs(readme): clarify backend-pluggable framing (LOOP-8).** The README opener,
   How-it-works bullet, and Requirements no longer frame Linear as mandatory — the
   loop has been backend-pluggable (`backend:"linear"` default | `backend:"local"`)
