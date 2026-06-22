@@ -303,12 +303,47 @@ up any edit you (or an agent) made on disk.
 ```
 $ bash tools/test.sh
 ok  lint-plugin: all rules pass
-... 21 tests ok ...
+... all tests ok ...
 ok  all plugin self-tests passed
 ```
 
 Set `build.test: "bash tools/test.sh"` in your `projects.json` entry for this
 project so Dev's gate (Step 5 of the dev-agent skill) runs it before every ship.
+
+## Status CLI
+
+A terminal-friendly companion to the dashboard — when you just want the numbers
+and don't want to open a browser. Auto-discovers every project under the data
+dir, prints one line per project to stdout. Pure stdlib; reads the same board
+files the dashboard reads, never writes.
+
+```
+$ python3 tools/dl-status.py
+project      Todo  IP  IR Done Other  oldestTodo  blocked  staleIR>24h
+──────────────────────────────────────────────────────────────────────
+boardku        28   1   0   37     0          1d        0            0
+citron-geo      0   0   0   36     0          0d        0            0
+citron-tool     6   1   1   12     0          0d        0            0
+dev-loop        4   1   1    3     0          0d        1            0
+```
+
+**Flags**
+
+| Flag | Default | Notes |
+|---|---|---|
+| `--json` | off | Emit JSON (one object per project) — pipe to `jq` or feed downstream tools |
+| `--data-dir PATH` | `$CLAUDE_PLUGIN_DATA` or `~/.claude/plugins/data/dev-loop` | Override the data root |
+
+**Per-column meaning.** `Todo / IP / IR / Done` are the four canonical kanban
+columns. **Other** folds `Canceled` + `Duplicate` + `Backlog`. **oldestTodo** is
+the age (in whole days) of the longest-waiting Todo per project. **blocked**
+counts tickets carrying the `blocked` label (conventions §9). **staleIR>24h**
+counts In Review tickets whose `updated:` is more than 24 hours old — the
+standard stall signal (Dev shipped but the owner hasn't verified yet).
+
+**Exit code is always 0.** Status is read-only signal, never an alarm — wire it
+into your shell prompt, a tmux pane, or a cron-job if you like. A future
+`--alert` mode could opt into non-zero exits, but this command does not.
 
 ## Plugin self-lint (typecheck gate)
 

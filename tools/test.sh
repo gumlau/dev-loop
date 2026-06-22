@@ -17,6 +17,7 @@ python3 scripts/lint-plugin.py
 # 2. Python integration tests.
 TEST_MODULES=(
   tests.test_dashboard
+  tests.test_dl_status
   tests.test_lint_plugin
   tests.test_run_loop_smoke
 )
