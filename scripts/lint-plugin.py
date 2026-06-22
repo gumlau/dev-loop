@@ -28,6 +28,10 @@ Rules (one per AC in LOOP-4):
   shell-example-syntax  fenced shell examples in docs do not put a `--flag`
                       immediately after a `VAR=value` env prefix (bash treats
                       the flag as the command and exits 127 — LOOP-9)
+  tmux-session-name-consistency  docs do not reference a bare
+                      `tmux ... -t dev-loop` session — the launcher only
+                      creates `dev-loop-<project>` sessions, so a bare name
+                      is stale post-LOOP-2 doc drift (LOOP-13)
 
 §17 boundary: this script is a READ-ONLY detector. It NEVER edits
 references/conventions.md or any skills/*/SKILL.md — findings about those
@@ -373,6 +377,82 @@ def check_shell_example_syntax(root: Path) -> list[Finding]:
     return findings
 
 
+# Match a bare `dev-loop` tmux session name in any docs target: `tmux <verb>
+# -t dev-loop` where `dev-loop` is NOT followed by `-` (the negative
+# lookahead is the AC's `\b` non-`-` boundary, so `dev-loop-<project>` is
+# correctly excluded). Post-LOOP-2 the launcher only creates per-project
+# sessions — a bare reference is stale doc drift: `tmux attach -t dev-loop`
+# fails with "no session found", and `tmux kill-session -t dev-loop`
+# silently leaves the real `dev-loop-<project>` loops running (LOOP-13).
+_TMUX_BARE_DEVLOOP = re.compile(r"tmux\s+\S+\s+-t\s+dev-loop(?!-)")
+
+# Paragraph-local allow-list. A match wrapped in an explicit anti-pattern
+# callout is the operator describing the bug, not committing it. Two
+# allow-list signals (case-insensitive on keywords):
+#   1. Any of these keywords appears in the same paragraph (the run of
+#      non-blank lines around the match): "bare", "don't", "never",
+#      "fails", "silently", "no session found", "anti-pattern".
+#   2. The line immediately above the match contains the explicit marker
+#      `<!-- lint:tmux-allow -->`.
+_TMUX_ALLOW_KEYWORDS = (
+    "bare",
+    "don't",
+    "never",
+    "fails",
+    "silently",
+    "no session found",
+    "anti-pattern",
+)
+_TMUX_ALLOW_MARKER = "<!-- lint:tmux-allow -->"
+
+
+def check_tmux_session_name_consistency(root: Path) -> list[Finding]:
+    """Scan README.md, CHANGELOG.md, docs/*.md, references/*.md for the
+    LOOP-13 class of doc-vs-script drift: a bare `tmux ... -t dev-loop`
+    (without the per-project `-<project>` suffix). The launcher
+    (`scripts/run-loop.sh`) only creates `dev-loop-<project>` sessions —
+    a bare name is stale post-LOOP-2 doc drift. Allow-listed when wrapped
+    in an explicit anti-pattern callout (see allow-list above the regex).
+    """
+    findings: list[Finding] = []
+    targets: list[Path] = []
+    for name in ("README.md", "CHANGELOG.md"):
+        f = root / name
+        if f.exists():
+            targets.append(f)
+    for sub in ("docs", "references"):
+        d = root / sub
+        if d.exists():
+            targets += sorted(d.glob("*.md"))
+    for t in targets:
+        text = _read_text(t)
+        lines = text.splitlines()
+        for lineno, raw_line in enumerate(lines, 1):
+            if not _TMUX_BARE_DEVLOOP.search(raw_line):
+                continue
+            # Allow-list 1: explicit marker on the line above.
+            if lineno >= 2 and _TMUX_ALLOW_MARKER in lines[lineno - 2]:
+                continue
+            # Allow-list 2: paragraph-local keyword. A "paragraph" here is
+            # the contiguous run of non-blank lines containing the match.
+            start = lineno - 1
+            while start > 0 and lines[start - 1].strip() != "":
+                start -= 1
+            end = lineno
+            while end < len(lines) and lines[end].strip() != "":
+                end += 1
+            paragraph = "\n".join(lines[start:end]).lower()
+            if any(kw in paragraph for kw in _TMUX_ALLOW_KEYWORDS):
+                continue
+            findings.append(
+                f"tmux-session-name-consistency: {_rel(t, root)}:{lineno} "
+                f"bare `tmux ... -t dev-loop` — the launcher only creates "
+                f"`dev-loop-<project>` sessions (LOOP-13). Use the per-project "
+                f"form `dev-loop-<project>`."
+            )
+    return findings
+
+
 RULES: list[Callable[[Path], list[Finding]]] = [
     check_json_integrity,
     check_skill_frontmatter,
@@ -381,6 +461,7 @@ RULES: list[Callable[[Path], list[Finding]]] = [
     check_lessons_skeleton,
     check_agent_consistency,
     check_shell_example_syntax,
+    check_tmux_session_name_consistency,
 ]
 
 

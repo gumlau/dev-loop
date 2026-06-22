@@ -75,6 +75,12 @@ class TestLintPluginNegative(unittest.TestCase):
         # followed by a `--flag` token inside a fenced shell example.
         self.assert_rule_found("shell", "shell-example-syntax")
 
+    def test_tmux_session_name_consistency(self):
+        # Catches the LOOP-13 class of doc-vs-script drift: a bare
+        # `tmux ... -t dev-loop` reference to a session the launcher
+        # never creates (it only creates `dev-loop-<project>`).
+        self.assert_rule_found("tmux", "tmux-session-name-consistency")
+
 
 class TestLintPluginPositive(unittest.TestCase):
     """The lint must exit zero on the real repo (LOOP-4 AC #9)."""
