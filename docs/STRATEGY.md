@@ -65,6 +65,15 @@ editing code: correct, safe-by-gates, and pleasant to operate at multi-project s
   vestigial for back-compat reads and can be removed once each loop has fired once.
 - **Launcher**: `run-loop.sh` (lives in the data dir, not the plugin) opens a tmux
   session, one pane per agent, for **one** project per invocation.
+- **Multi-project launcher shipped (LOOP-2, `624e325`, 2026-06-22).** The canonical
+  template now lives in the plugin repo at `scripts/run-loop.sh` (operator installs
+  via `cp scripts/run-loop.sh ~/.claude/plugins/data/dev-loop/run-loop.sh`); one
+  command launches N projects (`PROJECTS="a b c"` or `PROJECTS=all`), each in its
+  own `dev-loop-<key>` tmux session, with a default skip-if-already-running guard
+  and `RESTART=1`/`--restart` that rotates only the listed project (siblings never
+  touched). Invalid keys abort pre-mutation. End-to-end coverage via
+  `scripts/smoke-run-loop.sh` + `tests/test_run_loop_smoke.py` (wired into
+  `tools/test.sh`). Single-project back-compat preserved.
 - **Local dashboard MVP shipped (LOOP-1, `38549fb` + LOOP-6 fix `2707a63`, 2026-06-22).**
   Read-only multi-project kanban over `${CLAUDE_PLUGIN_DATA}/<key>/board/`, served from
   `tools/dashboard/` (pure stdlib, 127.0.0.1-only, zero deps). 4 canonical columns,
@@ -128,6 +137,20 @@ editing code: correct, safe-by-gates, and pleasant to operate at multi-project s
   covered by LOOP-2/3/7 or are marginal — kept this fire to one ticket. Note for future
   fires: the README's `Requirements` list says "Linear MCP **the coordination
   substrate**" (singular), which is the same staleness as L26; LOOP-8 catches it.
+- **2026-06-22 (T22:00Z)** — LOOP-2 (multi-project launcher) verified Done against the
+  shipped commit `624e325`. Smoke (`scripts/smoke-run-loop.sh`) green end-to-end: both
+  sessions exist, default re-launch is a no-op (no sibling clobber), `RESTART=1`
+  rotates only the listed project, invalid key aborts pre-mutation. All 7 ACs pass.
+  Coverage shipped same-diff and wired into `tools/test.sh`. Operator priority #2(b)
+  is now closed; #2(c) is being implemented under **LOOP-3** (In Progress, dev WIP via
+  `tools/dl-status.py` + `tests/test_dl_status.py` untracked in working tree).
+  `strategy-gaps` lens at new SHA `624e325`: zero new tickets filed — the meaningful
+  product move closes a known gap rather than opening one. Other Candidate ideas (§2(a)
+  state-file namespacing — already shipped; §3a plugin self-lint — shipped via LOOP-4;
+  §3b conventions length audit / §3d §17-binding-check for Dev) remain parked. Also
+  noted: QA filed **LOOP-9** (P3, Bug, qa-owned, related to LOOP-2) for a
+  `docs/RUNNING.md:138` doc-drift on the LOOP-2 ship (env-prefix + flag combination
+  bash mis-parses) — properly typed/owned, does not regress LOOP-2's ACs.
 
 ## Candidate ideas
 
@@ -153,7 +176,9 @@ operator's stated priorities for this project.)*
    and `reports/` already are — to remove the cross-project read-modify-write lost-update
    race when loops run concurrently, and to bound each file's size. (b) `run-loop.sh`:
    launch **N projects at once** (`PROJECTS="a b c"`), each in its own tmux
-   session/window-group, without the fixed-session hard-kill clobbering a sibling loop.
+   session/window-group, without the fixed-session hard-kill clobbering a sibling loop. —
+   ✅ **shipped via LOOP-2** (2026-06-22, commit `624e325`). Canonical
+   `scripts/run-loop.sh` + smoke + test-gate wiring.
    (c) A board-health / cross-project status summary command.
 3. **Other optimizations (operator's priority #3 — ongoing).** Plugin self-lint/test
    harness (JSON valid, SKILL frontmatter present, conventions §N + markdown links
