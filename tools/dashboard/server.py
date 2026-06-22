@@ -507,8 +507,21 @@ def _review_state(report_path: str) -> tuple[str, str, float | None]:
     acted_path = report_path + ".review.acted"
     review_exists = os.path.isfile(drop_path)
     acted_exists = os.path.isfile(acted_path)
-    review_mtime = os.path.getmtime(drop_path) if review_exists else None
-    acted_mtime = os.path.getmtime(acted_path) if acted_exists else None
+    # LOOP-17 — the sibling may vanish between `isfile` and `getmtime`. Treat a
+    # failed stat as "gone" and fold the post-race truth back into the
+    # three-state machine, rather than letting the FileNotFoundError escape
+    # `_review_state → _review_panel_html → _serve_report → _route → do_GET`
+    # (none of which wrap this call) and kill the request thread.
+    try:
+        review_mtime = os.path.getmtime(drop_path) if review_exists else None
+    except OSError:
+        review_mtime = None
+    try:
+        acted_mtime = os.path.getmtime(acted_path) if acted_exists else None
+    except OSError:
+        acted_mtime = None
+    review_exists = review_exists and review_mtime is not None
+    acted_exists = acted_exists and acted_mtime is not None
     if not review_exists and not acted_exists:
         return "none", drop_path, None
     if review_exists and (

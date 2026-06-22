@@ -51,6 +51,8 @@ from tools.dashboard.board import (  # noqa: E402
 )
 from tools.dashboard.server import (  # noqa: E402
     _invalidate_cache,
+    _review_panel_html,
+    _review_state,
     make_handler,
     render_index,
     render_markdown,
@@ -1029,6 +1031,86 @@ class ReviewPanelTests(unittest.TestCase):
         ]:
             with self.subTest(attack=atk):
                 self.assertEqual(status(atk), 404)
+
+    def test_review_state_survives_review_md_vanishing_mid_check(self) -> None:
+        # LOOP-17 — sibling vanishes between isfile() and getmtime(). Before
+        # the fix this raised FileNotFoundError, propagated through
+        # _review_panel_html → _serve_report → _route → do_GET (none of which
+        # wrap _review_state) and killed the request thread — same shape as
+        # LOOP-6 (non-UTF-8 ticket) and LOOP-11 (renderer IndexError).
+        from unittest.mock import patch
+        drop_path = self.report_path + ".review.md"
+        with open(drop_path, "w", encoding="utf-8") as f:
+            f.write("c")
+        real_getmtime = os.path.getmtime
+
+        def racy(p: str) -> float:
+            if p == drop_path:
+                raise FileNotFoundError(p)
+            return real_getmtime(p)
+
+        with patch("os.path.getmtime", side_effect=racy):
+            state, returned_drop, acted_mtime = _review_state(self.report_path)
+            # AC: returns a defined tuple instead of raising; state is one of
+            # the three documented strings; folds to "none" here because the
+            # only sibling we created is the one that vanished.
+            self.assertIn(state, ("none", "awaiting", "acted"))
+            self.assertEqual(state, "none")
+            self.assertEqual(returned_drop, drop_path)
+            self.assertIsNone(acted_mtime)
+            # AC: _review_panel_html returns a string without raising.
+            panel = _review_panel_html(self.report_path, "pm-agent")
+            self.assertIsInstance(panel, str)
+            self.assertIn("state none", panel)
+
+    def test_review_state_survives_review_acted_vanishing_mid_check(self) -> None:
+        # LOOP-17 — symmetric race on the `.review.acted` sibling (the ticket
+        # notes the same vulnerability exists at server.py:509+511).
+        from unittest.mock import patch
+        drop_path = self.report_path + ".review.md"
+        acted_path = self.report_path + ".review.acted"
+        with open(drop_path, "w", encoding="utf-8") as f:
+            f.write("c")
+        with open(acted_path, "w", encoding="utf-8") as f:
+            f.write("")
+        real_getmtime = os.path.getmtime
+
+        def racy(p: str) -> float:
+            if p == acted_path:
+                raise FileNotFoundError(p)
+            return real_getmtime(p)
+
+        with patch("os.path.getmtime", side_effect=racy):
+            state, returned_drop, acted_mtime = _review_state(self.report_path)
+            # review.md still resolves, acted vanished → "awaiting".
+            self.assertEqual(state, "awaiting")
+            self.assertEqual(returned_drop, drop_path)
+            self.assertIsNone(acted_mtime)
+            panel = _review_panel_html(self.report_path, "pm-agent")
+            self.assertIsInstance(panel, str)
+            self.assertIn("state awaiting", panel)
+
+    def test_review_state_survives_both_siblings_vanishing_mid_check(self) -> None:
+        # LOOP-17 — both stat calls race; result must fold to "none".
+        from unittest.mock import patch
+        drop_path = self.report_path + ".review.md"
+        acted_path = self.report_path + ".review.acted"
+        with open(drop_path, "w", encoding="utf-8") as f:
+            f.write("c")
+        with open(acted_path, "w", encoding="utf-8") as f:
+            f.write("")
+        real_getmtime = os.path.getmtime
+
+        def racy(p: str) -> float:
+            if p in (drop_path, acted_path):
+                raise FileNotFoundError(p)
+            return real_getmtime(p)
+
+        with patch("os.path.getmtime", side_effect=racy):
+            state, returned_drop, acted_mtime = _review_state(self.report_path)
+            self.assertEqual(state, "none")
+            self.assertEqual(returned_drop, drop_path)
+            self.assertIsNone(acted_mtime)
 
 
 if __name__ == "__main__":
