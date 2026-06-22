@@ -932,5 +932,104 @@ class IndexSortTests(unittest.TestCase):
                         "newer-proj must appear above older-proj on the index")
 
 
+class ReviewPanelTests(unittest.TestCase):
+    """LOOP-12 — the 点评 panel surfaces three states from sibling-file
+    metadata. No new route, no content read, no writes."""
+
+    def setUp(self) -> None:
+        _invalidate_cache()
+        self.tmp = tempfile.mkdtemp(prefix="devloop-dash-review-")
+        self.today = datetime.now().strftime("%Y-%m-%d")
+        pm_daily = os.path.join(self.tmp, "demo", "reports", "pm-agent", "daily")
+        os.makedirs(pm_daily, exist_ok=True)
+        self.report_path = os.path.join(pm_daily, f"{self.today}.md")
+        with open(self.report_path, "w", encoding="utf-8") as f:
+            f.write("# Today\n\nA tiny report.\n")
+        self.port = _free_port()
+        handler = make_handler(self.tmp)
+        self.server = ThreadingHTTPServer(("127.0.0.1", self.port), handler)
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+
+    def tearDown(self) -> None:
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(timeout=2)
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _fetch(self) -> str:
+        url = f"http://127.0.0.1:{self.port}/reports/demo/pm-agent/daily/{self.today}.md"
+        with urlopen(url, timeout=2) as resp:
+            return resp.read().decode("utf-8")
+
+    def test_state_none_when_no_siblings(self) -> None:
+        body = self._fetch()
+        self.assertIn("Operator review (点评)", body)
+        self.assertIn("state none", body)
+        self.assertIn("Drop a free-form", body)
+        # Drop path reflects the configured data dir (the temp dir), not a
+        # hard-coded ~/.claude/plugins/data/dev-loop.
+        self.assertIn(self.report_path + ".review.md", body)
+        # Awaiting/acted markers must NOT appear in the none state.
+        self.assertNotIn("state awaiting", body)
+        self.assertNotIn("state acted", body)
+
+    def test_state_awaiting_when_review_md_present_only(self) -> None:
+        with open(self.report_path + ".review.md", "w", encoding="utf-8") as f:
+            f.write("operator critique here\n")
+        body = self._fetch()
+        self.assertIn("state awaiting", body)
+        self.assertIn("awaiting next agent fire", body)
+        self.assertIn(self.report_path + ".review.md", body)
+        # Content of the review.md must NOT leak into the page (the panel only
+        # reads existence + mtime — it never reads the sidecar content).
+        self.assertNotIn("operator critique here", body)
+
+    def test_state_awaiting_when_review_md_newer_than_acted(self) -> None:
+        # Acted exists but the operator dropped a fresher critique on top.
+        with open(self.report_path + ".review.acted", "w", encoding="utf-8") as f:
+            f.write("")
+        os.utime(self.report_path + ".review.acted", (1_700_000_000, 1_700_000_000))
+        with open(self.report_path + ".review.md", "w", encoding="utf-8") as f:
+            f.write("new critique\n")
+        os.utime(self.report_path + ".review.md", (1_700_001_000, 1_700_001_000))
+        body = self._fetch()
+        self.assertIn("state awaiting", body)
+
+    def test_state_acted_when_acted_sibling_present_and_newer(self) -> None:
+        with open(self.report_path + ".review.md", "w", encoding="utf-8") as f:
+            f.write("old critique\n")
+        os.utime(self.report_path + ".review.md", (1_700_000_000, 1_700_000_000))
+        with open(self.report_path + ".review.acted", "w", encoding="utf-8") as f:
+            f.write("")
+        os.utime(self.report_path + ".review.acted", (1_700_001_000, 1_700_001_000))
+        body = self._fetch()
+        self.assertIn("state acted", body)
+        self.assertIn("Acted by", body)
+        self.assertIn("pm-agent", body)
+        # The drop path is still shown in the acted state.
+        self.assertIn(self.report_path + ".review.md", body)
+
+    def test_path_traversal_still_404_with_panel_added(self) -> None:
+        # LOOP-7 AC5 regression — the panel addition must not loosen the
+        # path-resolver firewall. (The same set of traversal probes
+        # MarkdownRouteTests already covers, asserted here against the live
+        # review-panel fixture too.)
+        def status(p: str) -> int:
+            try:
+                with urlopen(f"http://127.0.0.1:{self.port}{p}", timeout=2) as resp:
+                    return resp.status
+            except Exception as e:
+                return getattr(e, "code", 0)
+        for atk in [
+            f"/reports/demo/pm-agent/daily/../../../etc/passwd",
+            f"/reports/demo/pm-agent/../../../etc/passwd",
+            f"/reports/demo/pm-agent/daily/{self.today}.md.review.md",  # not a valid period filename
+        ]:
+            with self.subTest(attack=atk):
+                self.assertEqual(status(atk), 404)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -157,6 +157,21 @@ h3 { margin: 1rem 0 .4rem; font-size: 1rem; }
                     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
                     font-size: .9em; }
 .report-body p { line-height: 1.5; }
+.review { background: #fafbfc; border: 1px solid #e3e6ea; border-radius: 8px;
+          padding: .7rem 1rem; margin-top: 1rem; font-size: .9rem; }
+.review h2 { margin: 0 0 .4rem; font-size: .95rem; }
+.review .state { display: inline-block; padding: .05rem .5rem; border-radius: 999px;
+                 font-size: .72rem; line-height: 1.4; border: 1px solid transparent;
+                 margin-left: .35rem; vertical-align: 1px; }
+.review .state.none { background: #eef0f3; color: #404040; }
+.review .state.awaiting { background: #fff0c4; color: #7a5b0d; }
+.review .state.acted { background: #d9f0d3; color: #1e6e1a; }
+.review .nudge { color: #404040; margin: .2rem 0 .5rem; }
+.review .ack { color: #404040; margin: .2rem 0 .5rem; }
+.review .drop-label { color: #687078; font-size: .78rem; margin: .4rem 0 .15rem; }
+.review code.drop { display: block; background: #f6f7f9; padding: .4rem .6rem;
+                   border-radius: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                   font-size: .82rem; word-break: break-all; user-select: all; }
 """
 
 
@@ -480,6 +495,64 @@ def render_markdown(src: str) -> str:
     return sentinel_re.sub(_restore, rendered)
 
 
+def _review_state(report_path: str) -> tuple[str, str, float | None]:
+    """LOOP-12 — derive the 点评 panel state from sibling file metadata.
+
+    Returns ``(state, drop_path, acted_mtime)`` where ``state`` is one of
+    ``"none"`` / ``"awaiting"`` / ``"acted"`` per conventions §22. Purely
+    existence + mtime; never reads the sidecar content (sidecars are
+    machine-owned).
+    """
+    drop_path = report_path + ".review.md"
+    acted_path = report_path + ".review.acted"
+    review_exists = os.path.isfile(drop_path)
+    acted_exists = os.path.isfile(acted_path)
+    review_mtime = os.path.getmtime(drop_path) if review_exists else None
+    acted_mtime = os.path.getmtime(acted_path) if acted_exists else None
+    if not review_exists and not acted_exists:
+        return "none", drop_path, None
+    if review_exists and (
+        not acted_exists or (review_mtime or 0.0) > (acted_mtime or 0.0)
+    ):
+        return "awaiting", drop_path, acted_mtime
+    # acted_exists and (no review_md, or acted is at least as new)
+    return "acted", drop_path, acted_mtime
+
+
+def _review_panel_html(report_path: str, agent: str) -> str:
+    state, drop_path, acted_mtime = _review_state(report_path)
+    header = (
+        "<h2>Operator review (点评) "
+        f"<span class='state {state}'>{html.escape(state)}</span></h2>"
+    )
+    if state == "none":
+        msg = (
+            "<p class='nudge'>Drop a free-form <code>*.review.md</code> sibling "
+            "to critique this report; the agent will distill it into a "
+            "<code>lessons.md</code> rule on its next fire.</p>"
+        )
+    elif state == "awaiting":
+        msg = (
+            "<p class='nudge'>Critique on file — "
+            "awaiting next agent fire.</p>"
+        )
+    else:  # acted
+        ts = ""
+        if acted_mtime is not None:
+            ts = datetime.fromtimestamp(acted_mtime).strftime("%Y-%m-%d %H:%M")
+        msg = (
+            "<p class='ack'>Acted by "
+            f"<code>{html.escape(agent)}</code>"
+            + (f" at {html.escape(ts)}" if ts else "")
+            + ".</p>"
+        )
+    drop = (
+        "<div class='drop-label'>Drop path:</div>"
+        f"<code class='drop'>{html.escape(drop_path)}</code>"
+    )
+    return f"<div class='review'>{header}{msg}{drop}</div>"
+
+
 def render_report_page(
     project_key: str,
     agent: str,
@@ -487,6 +560,7 @@ def render_report_page(
     filename: str,
     body_md: str,
     mtime: float | None,
+    report_path: str | None = None,
 ) -> str:
     ago = ""
     if mtime is not None:
@@ -504,11 +578,15 @@ def render_report_page(
         + (f" · {html.escape(ago)}" if ago else "")
         + "</div>"
     )
+    review_panel = ""
+    if report_path is not None:
+        review_panel = _review_panel_html(report_path, agent)
     body = (
         f"{crumb}"
         f"<h1>{html.escape(filename)}</h1>"
         f"{meta}"
         f"<div class='report-body'>{rendered}</div>"
+        f"{review_panel}"
     )
     return _layout(f"{filename} · {project_key} · dev-loop", body)
 
@@ -553,7 +631,9 @@ def _serve_report(data_dir: str, project_key: str, agent: str, period: str, file
         mtime: float | None = os.path.getmtime(path)
     except (OSError, UnicodeDecodeError):
         return 404, render_not_found("report not readable")
-    return 200, render_report_page(project_key, agent, period, filename, body, mtime)
+    return 200, render_report_page(
+        project_key, agent, period, filename, body, mtime, report_path=path,
+    )
 
 
 # ---------------------------------------------------------------------------

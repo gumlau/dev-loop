@@ -358,6 +358,17 @@ filenames matching the dated grammar from conventions §22. Any `..` or
 non-dated path 404s; the renderer escapes all HTML and only re-introduces
 headings, bold/italic, inline code, fenced code blocks, and `http(s)://` links.
 
+- **Operator review (点评) panel.** Below each rendered report, a small
+  read-only block shows the exact local **drop path** of the sibling
+  `<report>.review.md` (reflecting the configured `--data-dir`, not a
+  hard-coded `~/.claude/plugins/data/dev-loop`) and which of three states the
+  channel is in: **none yet** (no sibling — a one-line nudge to drop one),
+  **awaiting** (a `.review.md` exists, agent hasn't acted yet), or **acted**
+  (a `.review.acted` sidecar is newer than the `.review.md`, with the agent
+  and acted timestamp). Pure existence + mtime — the dashboard never reads the
+  sidecar content (sidecars are machine-owned per
+  [conventions §22](references/conventions.md#22-reports--operator-review--daily--weekly--monthly)).
+
 **Tests.** A self-test suite lives under `tests/` and is wired into the project's
 `build.test` gate via `tools/test.sh`:
 
