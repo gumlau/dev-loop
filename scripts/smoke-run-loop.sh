@@ -103,6 +103,12 @@ B_TS_2="$(tmux display-message -p -t "$SESS_B" '#{session_created}')"
 echo "✓ default re-launch of $PA is a no-op (sibling $PB untouched, $PA preserved)"
 
 echo "→ RESTART=1 second launch of just $PA → should restart A, leave B alone"
+# tmux's `#{session_created}` is whole-second epoch. The kill+relaunch round-trip
+# is sub-second on a fast machine, so without this sleep A_TS_3 can equal A_TS_1
+# (same second) even though a real restart happened — the assertion below would
+# false-negative on every run. Wait > 1s so the post-RESTART timestamp lands in
+# a different epoch second.
+sleep 1.1
 DATA_DIR="$SANDBOX" PATH="$SHIM:$PATH" PROJECTS="$PA" RESTART=1 SWEEP=0 \
   "$RUN_LOOP" </dev/null >"$SANDBOX/launch3.log" 2>&1 \
   || { cat "$SANDBOX/launch3.log"; fail "launch 3 (RESTART) exited non-zero"; }
