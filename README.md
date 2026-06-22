@@ -3,7 +3,7 @@
 Eight autonomous agents — **PM**, **QA**, **Dev**, **Sweep**, **Reflect**, **Ops**,
 **Architect**, and **Signal** — that run a software-development loop **coordinated
 entirely through ticket state** (Linear by default, or a machine-local file board —
-see [§18](references/conventions.md)). They never call each other directly; the
+see [§18](references/conventions.md#18-backend--linear-vs-local)). They never call each other directly; the
 ticket board is the shared blackboard. Five are inward / build-facing; three
 (Ops/Architect/Signal) are **outward** observe-and-file agents that connect the loop
 to running prod, whole-codebase health, and real users. Trigger each one manually,
@@ -81,7 +81,7 @@ claim / dedupe / blocked protocols, and the self-evolution boundary — live in
     tools) and a **Linear team + project** the loop may own.
   - `backend:"local"` needs **neither** — the board lives in a machine-local file
     store next to `projects.json` and is created by `/dev-loop:init` (see
-    [conventions §18](references/conventions.md)).
+    [conventions §18](references/conventions.md#18-backend--linear-vs-local)).
 - Per-role: `repoPath` (Dev), `strategyDoc` (PM), `testEnv` (QA) — see Configure.
 
 ## Install
