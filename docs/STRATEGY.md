@@ -151,6 +151,32 @@ editing code: correct, safe-by-gates, and pleasant to operate at multi-project s
   noted: QA filed **LOOP-9** (P3, Bug, qa-owned, related to LOOP-2) for a
   `docs/RUNNING.md:138` doc-drift on the LOOP-2 ship (env-prefix + flag combination
   bash mis-parses) — properly typed/owned, does not regress LOOP-2's ACs.
+- **2026-06-22 (T22:30Z)** — LOOP-3 (board-health / cross-project status CLI) verified
+  Done against shipped commit `154b4e9`. All 7 ACs PASS: CLI surface +
+  README **Status CLI** section (#1), auto-discovers every `<data-dir>/<key>/board/`
+  (#2), per-project columns (Todo/IP/IR/Done/Other + oldestTodo + blocked +
+  staleIR>24h) (#3), deterministic `--json` (#4), 0.40s wall-clock on the four-loop
+  layout (#5, < 2s budget), exit 0 always (#6), 11 unit tests in
+  `tests/test_dl_status.py` wired into `tools/test.sh` → 33 tests green (#7).
+  Operator priority #2(c) is now closed; the priority #1 (dashboard) split into the
+  shipped MVP **LOOP-1** + in-flight **LOOP-7** (dev/h0p1 actively working it).
+  Operator priority #2 (multi-project parallelism) is now FULLY closed — (a)
+  state-file namespacing, (b) `run-loop.sh` multi-project, (c) status CLI all shipped.
+  Sealed a board-hygiene gap on LOOP-3 (the `In Review → Done` flip lacked a state-move
+  comment per §18 — backfilled with the full verification trail on the ticket; the
+  process drift itself is run-window noise for Reflect, not a ticket).
+  `strategy-gaps` lens at new product SHA `154b4e9`: filed **LOOP-10** (P3,
+  Improvement, pm-owned, related to LOOP-4) for operator priority #3b — audit
+  `references/conventions.md` (1,632 lines today) for length/redundancy and produce
+  a structured §17 PROPOSAL (`docs/CONVENTIONS_AUDIT.md`) the operator can apply
+  selectively. Deliberately scoped as audit-only: the §17 self-modification firewall
+  means Dev MUST NOT touch `references/conventions.md` itself — only produce the
+  audit doc. Backlog depth check: pm Todo is now 2 (LOOP-8 README opener, LOOP-10
+  audit) + pm In Progress 1 (LOOP-7 dashboard v2); not deep enough to throttle
+  filing. Other priority #3 ideas (§3c data-dir uniformity post-#2 — implicit/done
+  via the per-key layout already shipped; §3d §17-binding-check for Dev — kept
+  parked, value is spec-fuzzy and the deliverable would be a SKILL-edit proposal,
+  which is more meta-meta than #3b's audit) remain Candidate ideas.
 
 ## Candidate ideas
 
@@ -179,7 +205,14 @@ operator's stated priorities for this project.)*
    session/window-group, without the fixed-session hard-kill clobbering a sibling loop. —
    ✅ **shipped via LOOP-2** (2026-06-22, commit `624e325`). Canonical
    `scripts/run-loop.sh` + smoke + test-gate wiring.
-   (c) A board-health / cross-project status summary command.
+   (c) A board-health / cross-project status summary command. — ✅ **shipped via
+     LOOP-3** (2026-06-23, commit `154b4e9`). `tools/dl-status.py`: pure-stdlib
+     terminal companion to LOOP-1's dashboard, re-uses `dashboard.board` as a
+     read-only consumer (no edits to the dashboard package). One line per
+     project: counts by state, oldest-Todo age, blocked count, staleIR>24h
+     stall signal. `--json` emits the same data for `jq` pipelines. 0.40s
+     wall-clock across the current four-loop layout (AC#5 budget < 2s). 11
+     unit tests in `tests/test_dl_status.py`, wired into `tools/test.sh`.
 3. **Other optimizations (operator's priority #3 — ongoing).** Plugin self-lint/test
    harness (JSON valid, SKILL frontmatter present, conventions §N + markdown links
    resolve, README/CHANGELOG/conventions consistent) wired as the typecheck/test gate;
