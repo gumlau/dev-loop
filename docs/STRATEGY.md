@@ -200,6 +200,37 @@ editing code: correct, safe-by-gates, and pleasant to operate at multi-project s
   and strictly read-only on top of `render_report_page`. Backlog at close:
   Done 7 · In Review 0 pm · 2 pm Todo (LOOP-8, LOOP-10) + 1 pm Todo new
   (LOOP-12) + 3 qa Todo (LOOP-5, LOOP-9, LOOP-11-fixed-pending-QA-verify).
+- **2026-06-22 (T14:19Z)** — 8th PM fire. HEAD moved `a1f5e95` → `e443d1c` with one
+  new product commit in the window: **LOOP-13** (qa-filed Bug; Dev shipped at
+  `e443d1c` — `docs/RUNNING.md` §5/§6 now use per-project `dev-loop-<project>`
+  tmux session names, closing the post-LOOP-2 doc-drift hazard where a bare
+  `tmux kill-session -t dev-loop` silently left autonomous loops running). PM
+  doc commit `efe0dcb` is the only other commit; no other product code moved.
+  Per new-SHA branch: reset `sweptLensesAtSha`, re-rotated to `strategy-gaps`
+  first at `e443d1c`. Diff-focused review: LOOP-13 is a docs fix on the
+  multi-project parallelism surface — it closes drift, it does not open a new
+  capability surface, so `strategy-gaps` finds **0 net-new tickets**. Dedupe-
+  against-reality at `e443d1c`: operator priorities #1 (dashboard, a/b/c/d)
+  and #2 (multi-project parallelism, a/b/c) remain FULLY closed; #3a self-lint
+  shipped (LOOP-4), #3b conventions audit filed (LOOP-10) awaiting Dev,
+  #3c data-dir uniformity implicit/done, #3d §17-binding-check parked
+  (Candidate idea — spec-fuzzy). LOOP-13's structural lint follow-up (docs-vs-
+  script tmux naming consistency) is QA-tracked as **LOOP-15** (`[coverage]`,
+  qa-owned, P4) — a §15(B) coverage ticket, not a strategy gap. PM Todo backlog
+  at close depth-adequate (LOOP-10 audit + LOOP-12 点评 footer). Filing zero
+  per PM guardrails. Bottleneck: QA verification on LOOP-13 In Review + working
+  LOOP-14/15 unblocks more than another PM fire would. Job A: 0 In Review pm
+  (LOOP-13 is qa-owned, not mine). Job B: 0 blocked pm. Board at close:
+  Done 8 (LOOP-1/2/3/4/6/7/8) · In Review 1 qa (LOOP-13) · Todo pm 2 (LOOP-10,
+  LOOP-12) · Todo qa 2 (LOOP-14, LOOP-15) · Blocked qa 1 (LOOP-5) · In Progress
+  0. Next un-swept lens at `e443d1c` is `ux-flows`; next-fire decision tree
+  unchanged from prior fire — (a) Dev moves LOOP-10/12 → In Review → Job A
+  pickup; (b) HEAD moves with NEW product code beyond `e443d1c` → reset and
+  re-rotate from `strategy-gaps`; (c) operator edits STRATEGY.md (length ≠
+  current) → doc-watch re-entry; (d) manual `/pm-agent` with no a/b/c → rotate
+  to `ux-flows` at `e443d1c`. §17 boundary held: pre-existing skills/+conventions
+  dirty tree persists across fires (operator WIP), still not scooped per §7
+  staging discipline (this fire stages only `docs/STRATEGY.md`).
 - **2026-06-23 (T03:55Z)** — LOOP-8 (README backend-pluggable framing) verified Done
   against ship `a1f5e95`. All 7 ACs PASS: opener softened ("ticket state" + parenthetical
   §18 link), How-it-works bullet rebranded "Ticket state is the only channel" naming
