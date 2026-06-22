@@ -1,22 +1,78 @@
 """Read-only HTTP server: index + per-project kanban view.
 
-Binds 127.0.0.1 only (AC #6). No auth, no external network. Re-reads board
-files on each request (board state changes are rare; AC permits ≤30s cache,
-but for simplicity we re-read — the data is tiny). The whole product is one
-process the operator runs on demand.
+Binds 127.0.0.1 only (LOOP-1 AC #6). No auth, no external network.
+
+LOOP-7: extends the per-project view with three live-activity surfaces
+(recent activity, agent reports strip, throughput) and gives the index a
+"last activity" sort. Adds a sanitized-markdown render route for the
+agent report files. Still strictly read-only. A small mtime-aware cache
+keeps per-request work cheap for the 1000-ticket / 90-report budget.
 """
 
 from __future__ import annotations
 
 import html
 import os
+import re
+import threading
+import time
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
-from .board import COLUMNS, OTHER, Project, Ticket, discover_projects, find_project
+from .board import (
+    AgentReport,
+    COLUMNS,
+    OTHER,
+    Project,
+    StateMove,
+    Throughput,
+    Ticket,
+    discover_projects,
+)
 
 
-# Brief HTML scaffolding (inline so the binary is self-contained).
+# ---------------------------------------------------------------------------
+# Per-data-dir mtime-aware cache.
+#
+# LOOP-1 AC permits a ≤30s cache. We use a tiny TTL cache keyed on data_dir
+# so a flurry of requests (e.g. a browser fetching the index + a click-through
+# into a project) doesn't re-walk the same trees four times. Threading-safe
+# (the HTTP server is multi-threaded).
+# ---------------------------------------------------------------------------
+
+_CACHE_TTL_SECONDS = 5.0  # well under the 30s ceiling — fresh enough to feel live
+_cache_lock = threading.Lock()
+_cache: dict[tuple[str, str], tuple[float, list[Project]]] = {}
+
+
+def _cached_discover(data_dir: str, today_key: str) -> list[Project]:
+    key = (data_dir, today_key)
+    now = time.monotonic()
+    with _cache_lock:
+        hit = _cache.get(key)
+        if hit and (now - hit[0]) < _CACHE_TTL_SECONDS:
+            return hit[1]
+    projects = discover_projects(data_dir, today_key=today_key)
+    with _cache_lock:
+        _cache[key] = (now, projects)
+    return projects
+
+
+def _today_key() -> str:
+    return datetime.now().strftime("%Y-%m-%d")
+
+
+def _invalidate_cache() -> None:
+    """Test hook — drop the cache so a seeded change is visible immediately."""
+    with _cache_lock:
+        _cache.clear()
+
+
+# ---------------------------------------------------------------------------
+# HTML scaffolding.
+# ---------------------------------------------------------------------------
+
 _BASE_CSS = """
 :root { color-scheme: light dark; }
 * { box-sizing: border-box; }
@@ -25,18 +81,20 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 a { color: #0a66c2; text-decoration: none; }
 a:hover { text-decoration: underline; }
 h1 { margin: 0 0 1rem; font-size: 1.5rem; }
-h2 { margin: 0 0 .6rem; font-size: 1.1rem; }
+h2 { margin: 1.4rem 0 .6rem; font-size: 1.1rem; }
+h3 { margin: 1rem 0 .4rem; font-size: 1rem; }
 .crumb { margin-bottom: 1rem; font-size: .9rem; }
 .projects { display: grid; gap: .8rem; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
 .project { background: #fff; border: 1px solid #e3e6ea; border-radius: 8px;
            padding: 1rem; }
 .project .meta { color: #687078; font-size: .85rem; margin-top: .3rem; }
+.project .lastact { color: #687078; font-size: .8rem; margin-top: .2rem; font-style: italic; }
 .empty { color: #888; font-style: italic; }
 .board { display: grid; gap: .8rem;
          grid-template-columns: repeat(4, minmax(220px, 1fr)); }
 .col { background: #fff; border: 1px solid #e3e6ea; border-radius: 8px;
        padding: .8rem; min-height: 120px; }
-.col h2 { display: flex; justify-content: space-between; align-items: center; }
+.col h2 { margin: 0 0 .6rem; display: flex; justify-content: space-between; align-items: center; }
 .col h2 .count { background: #eef0f3; color: #404040; border-radius: 999px;
                  font-size: .75rem; padding: .1rem .5rem; }
 .card { background: #fafbfc; border: 1px solid #e3e6ea; border-radius: 6px;
@@ -60,8 +118,44 @@ h2 { margin: 0 0 .6rem; font-size: 1.1rem; }
 .pill.prio-0 { background: #eef0f3; color: #687078; }
 .pill.label { background: #f0f2f5; color: #404040; border-color: #e3e6ea; }
 .pill.age { background: transparent; color: #687078; }
+.panel { background: #fff; border: 1px solid #e3e6ea; border-radius: 8px;
+         padding: .8rem 1rem; margin-top: 1rem; }
+.panel h2 { margin-top: 0; }
+.activity { list-style: none; padding: 0; margin: 0; }
+.activity li { padding: .35rem 0; border-bottom: 1px solid #f0f1f4;
+               font-size: .9rem; display: flex; gap: .6rem; flex-wrap: wrap;
+               align-items: baseline; }
+.activity li:last-child { border-bottom: none; }
+.activity .ts { color: #687078; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: .8rem; min-width: 11ch; }
+.activity .transition { color: #404040; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                        font-size: .8rem; }
+.activity .agent { background: #eef0f3; padding: .05rem .4rem; border-radius: 999px;
+                   font-size: .72rem; color: #404040; }
+.reports-strip { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+.report-chip { background: #fafbfc; border: 1px solid #e3e6ea; border-radius: 999px;
+               padding: .3rem .7rem; font-size: .85rem; display: inline-flex;
+               align-items: baseline; gap: .4rem; }
+.report-chip.idle { background: transparent; color: #888; font-style: italic; }
+.report-chip .ago { color: #687078; font-size: .75rem; }
+.report-chip .more { color: #0a66c2; font-size: .75rem; }
+.throughput { display: grid; gap: .4rem; grid-template-columns: repeat(3, minmax(70px, 1fr)); }
+.throughput .stat { background: #fafbfc; border: 1px solid #e3e6ea; border-radius: 6px;
+                    padding: .5rem; text-align: center; }
+.throughput .stat .n { font-size: 1.4rem; font-weight: 600; line-height: 1; }
+.throughput .stat .label { color: #687078; font-size: .8rem; margin-top: .2rem; }
+.stuck { margin-top: .6rem; color: #8a5a0a; font-size: .85rem; }
+.stuck ul { margin: .3rem 0 0; padding-left: 1.2rem; }
 .other { margin-top: 1rem; }
 .footer { color: #888; font-size: .8rem; margin-top: 2rem; }
+.report-body { background: #fff; border: 1px solid #e3e6ea; border-radius: 8px;
+               padding: 1rem 1.5rem; }
+.report-body pre { background: #f6f7f9; padding: .6rem .8rem; border-radius: 6px;
+                   overflow-x: auto; font-size: .85rem; }
+.report-body code { background: #f0f1f4; padding: 0 .25rem; border-radius: 3px;
+                    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                    font-size: .9em; }
+.report-body p { line-height: 1.5; }
 """
 
 
@@ -74,6 +168,10 @@ def _layout(title: str, body: str) -> str:
         "127.0.0.1 only</div></body></html>"
     )
 
+
+# ---------------------------------------------------------------------------
+# Card + activity helpers.
+# ---------------------------------------------------------------------------
 
 def _card_html(t: Ticket) -> str:
     type_pill = f"<span class='pill type-{html.escape(t.type)}'>{html.escape(t.type)}</span>" if t.type else ""
@@ -95,19 +193,128 @@ def _card_html(t: Ticket) -> str:
     )
 
 
+def _humanize_ago(seconds: float) -> str:
+    if seconds < 60:
+        return f"{int(seconds)}s ago"
+    if seconds < 3600:
+        return f"{int(seconds / 60)}m ago"
+    if seconds < 86400:
+        return f"{int(seconds / 3600)}h ago"
+    return f"{int(seconds / 86400)}d ago"
+
+
+def _activity_html(moves: list[StateMove]) -> str:
+    if not moves:
+        return "<p class='empty'>No state-move activity recorded yet.</p>"
+    items = []
+    for m in moves:
+        ts_short = m.timestamp[:16].replace("T", " ")  # 2026-06-22 16:01
+        items.append(
+            "<li>"
+            f"<span class='ts'>{html.escape(ts_short)}</span>"
+            f"<span class='agent'>{html.escape(m.agent)}</span>"
+            f"<span class='id'>{html.escape(m.ticket_id)}</span>"
+            f"<span class='transition'>{html.escape(m.from_state)} → {html.escape(m.to_state)}</span>"
+            f"<span>{html.escape(m.ticket_title)}</span>"
+            "</li>"
+        )
+    return f"<ul class='activity'>{''.join(items)}</ul>"
+
+
+def _reports_strip_html(project_key: str, reports: list[AgentReport]) -> str:
+    if not reports:
+        return "<p class='empty'>No reports tree yet for this project.</p>"
+    now = time.time()
+    chips = []
+    for r in reports:
+        if r.is_idle_today:
+            chips.append(
+                f"<span class='report-chip idle'>{html.escape(r.agent)} · idle today</span>"
+            )
+        else:
+            assert r.today_mtime is not None
+            ago = _humanize_ago(max(0.0, now - r.today_mtime))
+            today_key = _today_key()
+            href = f"/reports/{html.escape(project_key)}/{html.escape(r.agent)}/daily/{today_key}.md"
+            chips.append(
+                "<span class='report-chip'>"
+                f"<a href='{href}'>{html.escape(r.agent)}</a>"
+                f"<span class='ago'>{html.escape(ago)}</span>"
+                "</span>"
+            )
+        # Add weekly/monthly links when present (no <select> — pure links, no JS).
+        more = []
+        for name in r.weekly_files[:1]:
+            href = f"/reports/{html.escape(project_key)}/{html.escape(r.agent)}/weekly/{html.escape(name)}"
+            more.append(f"<a class='more' href='{href}'>weekly</a>")
+        for name in r.monthly_files[:1]:
+            href = f"/reports/{html.escape(project_key)}/{html.escape(r.agent)}/monthly/{html.escape(name)}"
+            more.append(f"<a class='more' href='{href}'>monthly</a>")
+        if more:
+            chips[-1] = chips[-1].replace(
+                "</span>", " · " + " · ".join(more) + "</span>", 1
+            )
+    return f"<div class='reports-strip'>{''.join(chips)}</div>"
+
+
+def _throughput_html(tput: Throughput) -> str:
+    body = (
+        "<div class='throughput'>"
+        f"<div class='stat'><div class='n'>{tput.filed}</div>"
+        "<div class='label'>filed (7d)</div></div>"
+        f"<div class='stat'><div class='n'>{tput.shipped}</div>"
+        "<div class='label'>shipped (7d)</div></div>"
+        f"<div class='stat'><div class='n'>{tput.verified}</div>"
+        "<div class='label'>verified (7d)</div></div>"
+        "</div>"
+    )
+    if tput.stuck:
+        items = "".join(
+            f"<li><span class='id'>{html.escape(t.id)}</span> "
+            f"{html.escape(t.title)} <em>({html.escape(t.state)})</em></li>"
+            for t in tput.stuck
+        )
+        body += (
+            "<div class='stuck'>"
+            f"Stuck for ≥3 days: {len(tput.stuck)} ticket{'s' if len(tput.stuck) != 1 else ''}"
+            f"<ul>{items}</ul>"
+            "</div>"
+        )
+    else:
+        body += "<div class='stuck'>Nothing stuck ≥3 days. ✓</div>"
+    return body
+
+
+# ---------------------------------------------------------------------------
+# Pages.
+# ---------------------------------------------------------------------------
+
 def render_index(projects: list[Project]) -> str:
     body = ["<h1>dev-loop · projects</h1>"]
     if not projects:
         body.append("<p class='empty'>No projects found under the data dir yet.</p>")
     else:
+        # AC #4: sort by newest "last activity" first. Projects with no activity
+        # sink to the bottom.
+        sorted_projects = sorted(
+            projects,
+            key=lambda p: (p.last_activity_mtime or 0.0),
+            reverse=True,
+        )
+        now = time.time()
         body.append("<div class='projects'>")
-        for p in projects:
+        for p in sorted_projects:
             count = len(p.tickets)
             meta = f"{count} ticket{'s' if count != 1 else ''}" if count else "no tickets yet"
+            if p.last_activity_mtime is not None:
+                lastact = f"last activity: {_humanize_ago(max(0.0, now - p.last_activity_mtime))}"
+            else:
+                lastact = "last activity: never"
             body.append(
                 "<div class='project'>"
                 f"<a href='/p/{html.escape(p.key)}'>{html.escape(p.key)}</a>"
                 f"<div class='meta'>{meta}</div>"
+                f"<div class='lastact'>{html.escape(lastact)}</div>"
                 "</div>"
             )
         body.append("</div>")
@@ -120,6 +327,8 @@ def render_project(project: Project) -> str:
         "<div class='crumb'><a href='/'>← all projects</a></div>",
         f"<h1>{html.escape(project.key)}</h1>",
     ]
+
+    # --- Kanban board (LOOP-1) -----------------------------------------------
     body.append("<div class='board'>")
     for col in COLUMNS:
         cards = by_col.get(col, [])
@@ -141,6 +350,23 @@ def render_project(project: Project) -> str:
         for t in other:
             body.append(_card_html(t))
         body.append("</div></div>")
+
+    # --- LOOP-7 panels -------------------------------------------------------
+    body.append("<div class='panel'>")
+    body.append("<h2>Recent activity</h2>")
+    body.append(_activity_html(project.recent_activity()))
+    body.append("</div>")
+
+    body.append("<div class='panel'>")
+    body.append("<h2>Agent reports</h2>")
+    body.append(_reports_strip_html(project.key, project.agent_reports))
+    body.append("</div>")
+
+    body.append("<div class='panel'>")
+    body.append("<h2>Throughput</h2>")
+    body.append(_throughput_html(project.throughput()))
+    body.append("</div>")
+
     return _layout(f"{project.key} · dev-loop", "".join(body))
 
 
@@ -152,19 +378,191 @@ def render_not_found(detail: str = "") -> str:
     return _layout("not found · dev-loop", "".join(body))
 
 
+# ---------------------------------------------------------------------------
+# Markdown render route — strictly read-only, strictly whitelisted.
+# ---------------------------------------------------------------------------
+
+# Filenames must match the dated grammar (conventions §22). Anything else 404s.
+_DAILY_FN = re.compile(r"^\d{4}-\d{2}-\d{2}\.md$")
+_WEEKLY_FN = re.compile(r"^\d{4}-W\d{2}\.md$")
+_MONTHLY_FN = re.compile(r"^\d{4}-\d{2}\.md$")
+
+_PERIOD_RE = {"daily": _DAILY_FN, "weekly": _WEEKLY_FN, "monthly": _MONTHLY_FN}
+
+# Agent dir names are strict — only the known skill names. This rules out
+# arbitrary subdir traversal even if the period dir is omitted.
+_KNOWN_AGENTS = {
+    "pm-agent", "qa-agent", "dev-agent", "sweep-agent",
+    "reflect-agent", "ops-agent", "architect-agent", "signal-agent",
+}
+
+# Markdown bits we render. Everything else is escaped to text.
+_FENCED_RE = re.compile(r"```([a-zA-Z0-9_+-]*)\n(.*?)```", re.DOTALL)
+_HEADING_RE = re.compile(r"^(#{1,6})\s+(.*)$", re.MULTILINE)
+_BOLD_RE = re.compile(r"\*\*([^*]+)\*\*")
+_ITALIC_RE = re.compile(r"(?<![*_])\*([^*\n]+)\*(?!\*)")
+_INLINE_CODE_RE = re.compile(r"`([^`\n]+)`")
+_LINK_RE = re.compile(r"\[([^\]]+)\]\((https?://[^\s)]+)\)")
+
+
+def render_markdown(src: str) -> str:
+    """Tiny safe markdown renderer. Operator-trusted input, but we still
+    escape everything first and only re-introduce the constructs we recognize.
+    """
+    # 1. Extract fenced code blocks first — their contents are NOT processed
+    # further. Use a placeholder.
+    placeholders: list[str] = []
+
+    def _stash_fenced(m: re.Match[str]) -> str:
+        code = m.group(2)
+        rendered = f"<pre><code>{html.escape(code)}</code></pre>"
+        placeholders.append(rendered)
+        return f"\x00FENCED{len(placeholders) - 1}\x00"
+
+    work = _FENCED_RE.sub(_stash_fenced, src)
+
+    # 2. Escape everything.
+    work = html.escape(work)
+
+    # 3. Headings (after escape, so the # is literal already).
+    def _heading(m: re.Match[str]) -> str:
+        level = min(6, max(1, len(m.group(1))))
+        # Headings inside the rendered report use h3+ to nest below the page H1.
+        level = min(6, level + 2)
+        return f"<h{level}>{m.group(2).strip()}</h{level}>"
+
+    work = _HEADING_RE.sub(_heading, work)
+
+    # 4. Inline code (do this before bold/italic so `**` inside backticks is preserved).
+    work = _INLINE_CODE_RE.sub(lambda m: f"<code>{m.group(1)}</code>", work)
+
+    # 5. Bold + italic.
+    work = _BOLD_RE.sub(r"<strong>\1</strong>", work)
+    work = _ITALIC_RE.sub(r"<em>\1</em>", work)
+
+    # 6. Links — http(s) only, no scheme injection.
+    work = _LINK_RE.sub(r'<a href="\2" rel="noopener noreferrer">\1</a>', work)
+
+    # 7. Paragraphs — split on blank lines, wrap leftovers in <p> unless they
+    # already look like a block element (start with <h or <pre or are a placeholder).
+    out_blocks = []
+    for block in re.split(r"\n\s*\n", work):
+        b = block.strip()
+        if not b:
+            continue
+        if b.startswith("<h") or b.startswith("<pre") or "\x00FENCED" in b:
+            out_blocks.append(b)
+        else:
+            out_blocks.append(f"<p>{b}</p>")
+    rendered = "\n".join(out_blocks)
+
+    # 8. Restore fenced placeholders.
+    def _restore(m: re.Match[str]) -> str:
+        idx = int(m.group(1))
+        return placeholders[idx]
+
+    return re.sub(r"\x00FENCED(\d+)\x00", _restore, rendered)
+
+
+def render_report_page(
+    project_key: str,
+    agent: str,
+    period: str,
+    filename: str,
+    body_md: str,
+    mtime: float | None,
+) -> str:
+    ago = ""
+    if mtime is not None:
+        ago = _humanize_ago(max(0.0, time.time() - mtime))
+    crumb = (
+        "<div class='crumb'>"
+        f"<a href='/'>← all projects</a> · "
+        f"<a href='/p/{html.escape(project_key)}'>{html.escape(project_key)}</a>"
+        "</div>"
+    )
+    rendered = render_markdown(body_md)
+    meta = (
+        f"<div class='lastact'>{html.escape(agent)} · {html.escape(period)} · "
+        f"{html.escape(filename)}"
+        + (f" · {html.escape(ago)}" if ago else "")
+        + "</div>"
+    )
+    body = (
+        f"{crumb}"
+        f"<h1>{html.escape(filename)}</h1>"
+        f"{meta}"
+        f"<div class='report-body'>{rendered}</div>"
+    )
+    return _layout(f"{filename} · {project_key} · dev-loop", body)
+
+
+def _resolve_report_path(
+    data_dir: str, project_key: str, agent: str, period: str, filename: str,
+) -> str | None:
+    """Strict path resolution. Returns absolute path inside the reports tree,
+    or None if any check fails.
+    """
+    # 1. Whitelist each segment — no `..`, no slashes, no empty.
+    for seg in (project_key, agent, period, filename):
+        if not seg or "/" in seg or "\\" in seg or seg in {".", ".."}:
+            return None
+    if agent not in _KNOWN_AGENTS:
+        return None
+    pattern = _PERIOD_RE.get(period)
+    if pattern is None or not pattern.match(filename):
+        return None
+
+    # 2. Build the path. The expected report container.
+    project_root = os.path.realpath(os.path.join(data_dir, project_key))
+    reports_root = os.path.realpath(os.path.join(project_root, "reports"))
+    candidate = os.path.realpath(os.path.join(
+        project_root, "reports", agent, period, filename
+    ))
+    # 3. Ensure the resolved path stays under the reports tree.
+    if not candidate.startswith(reports_root + os.sep):
+        return None
+    if not os.path.isfile(candidate):
+        return None
+    return candidate
+
+
+def _serve_report(data_dir: str, project_key: str, agent: str, period: str, filename: str) -> tuple[int, str]:
+    path = _resolve_report_path(data_dir, project_key, agent, period, filename)
+    if path is None:
+        return 404, render_not_found("report not found")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            body = f.read()
+        mtime: float | None = os.path.getmtime(path)
+    except (OSError, UnicodeDecodeError):
+        return 404, render_not_found("report not readable")
+    return 200, render_report_page(project_key, agent, period, filename, body, mtime)
+
+
+# ---------------------------------------------------------------------------
+# Router.
+# ---------------------------------------------------------------------------
+
 def _route(path: str, data_dir: str) -> tuple[int, str]:
     if path == "/" or path == "":
-        projects = discover_projects(data_dir)
+        projects = _cached_discover(data_dir, _today_key())
         return 200, render_index(projects)
     if path.startswith("/p/"):
         key = path[len("/p/"):].rstrip("/")
-        # Disallow path traversal — only flat names with no slashes.
         if not key or "/" in key or key in {"..", "."}:
             return 404, render_not_found("invalid project key")
-        project = find_project(data_dir, key)
-        if project is None:
-            return 404, render_not_found(f"no project named {key!r}")
-        return 200, render_project(project)
+        # Use the cache (it discovers ALL projects, then we find ours).
+        for p in _cached_discover(data_dir, _today_key()):
+            if p.key == key:
+                return 200, render_project(p)
+        return 404, render_not_found(f"no project named {key!r}")
+    if path.startswith("/reports/"):
+        parts = path[len("/reports/"):].split("/")
+        if len(parts) != 4:
+            return 404, render_not_found("invalid report path")
+        project_key, agent, period, filename = parts
+        return _serve_report(data_dir, project_key, agent, period, filename)
     return 404, render_not_found(f"unknown path {path!r}")
 
 

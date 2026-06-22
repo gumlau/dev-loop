@@ -294,8 +294,62 @@ The four canonical columns are `Todo / In Progress / In Review / Done`;
 `Canceled`, `Duplicate`, and `Backlog` collapse into an "Other" pile below them.
 
 **Read-only.** The dashboard never writes — no ticket mutations, no state-file
-writes; it re-reads the board files on each request. Refresh the page to pick
-up any edit you (or an agent) made on disk.
+writes; it re-reads the board files on each request (with a 5s mtime-aware
+cache to keep multi-panel renders cheap). Refresh the page to pick up any edit
+you (or an agent) made on disk.
+
+**Live activity (LOOP-7).** The per-project page also surfaces three live-data
+panels stitched together from files the agents already write — no new
+instrumentation, no new state, no writes:
+
+- **Recent activity** — the last 20 ticket state transitions across the project,
+  newest first, with agent attribution parsed from each ticket's dated
+  `### <ts> — <agent>` comments. Useful for a glance at what just moved.
+
+```
+Recent activity
+─────────────────────────────────────────────────────────────────────
+2026-06-22 13:00  qa   B-1  In Review → Done           Bug bravo
+2026-06-22 12:00  dev  A-1  In Progress → In Review    Feature alpha
+2026-06-22 11:00  dev  A-1  Todo → In Progress         Feature alpha
+─────────────────────────────────────────────────────────────────────
+```
+
+- **Agent reports** — one chip per agent under `<project>/reports/<agent>/`. A
+  chip with the file's "Nm ago" mtime renders today's daily as a sanitized
+  HTML page; an agent with no daily today shows up as `pm-agent · idle today`.
+  A `weekly`/`monthly` link sits next to each present chip.
+
+```
+Agent reports
+[pm-agent · 8m ago · weekly · monthly]  [qa-agent · idle today]  [dev-agent · 2m ago]
+```
+
+- **Throughput** — filed / shipped / verified counts over the trailing 7 days,
+  derived purely from ticket `created:` and the state-move comment timestamps,
+  plus a "stuck ≥3 days" callout for non-terminal tickets that haven't moved.
+
+```
+Throughput
+┌────────┐ ┌────────┐ ┌────────┐
+│   3    │ │   2    │ │   2    │
+│ filed  │ │shipped │ │verified│
+│  (7d)  │ │  (7d)  │ │  (7d)  │
+└────────┘ └────────┘ └────────┘
+Stuck ≥3 days: 1 ticket
+- T-3 stuck old work (In Progress)
+```
+
+The **index** sorts projects by "last activity" (the newest mtime across each
+project's `tickets/*.md` + `reports/**`), so a freshly-active loop floats to
+the top and a stalled one sinks. Each project line shows a "last activity:
+Nm ago" hint so you can spot a stale loop at a glance.
+
+The markdown render route is **strictly whitelisted** — only the eight known
+agent names, only the three period dirs (`daily`/`weekly`/`monthly`), and only
+filenames matching the dated grammar from conventions §22. Any `..` or
+non-dated path 404s; the renderer escapes all HTML and only re-introduces
+headings, bold/italic, inline code, fenced code blocks, and `http(s)://` links.
 
 **Tests.** A self-test suite lives under `tests/` and is wired into the project's
 `build.test` gate via `tools/test.sh`:
