@@ -726,6 +726,157 @@ class MarkdownRenderTests(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# LOOP-11 — Null-byte FENCED placeholder collision.
+#
+# The renderer extracts fenced code blocks behind internal sentinel
+# placeholders, then restores them after escaping the rest. The old
+# deterministic sentinel grammar (`\x00FENCED<n>\x00`) collided with
+# user-controlled bytes that happened to match the same shape — two
+# distinct failure modes:
+#   - out-of-range `<n>` (no matching block) → IndexError → request thread
+#     died → client saw RemoteDisconnected;
+#   - in-range `<n>` (matching an existing block) → silent substitution of
+#     ANOTHER block's rendered HTML at the sentinel position → 200 with
+#     wrong-but-escaped content (worse than crashing).
+# The fix (Option B in the ticket) replaces the deterministic grammar with
+# a per-render random token, so user bytes can never alias the sentinel.
+# ---------------------------------------------------------------------------
+
+
+class MarkdownPlaceholderCollisionTests(unittest.TestCase):
+    """Regression tests for LOOP-11. Both failure modes must be closed:
+    out-of-range index (was IndexError) AND in-range substitution
+    (was silent block aliasing).
+    """
+
+    def test_out_of_range_sentinel_does_not_crash(self) -> None:
+        # No fenced blocks in source ⇒ placeholders list is empty. The old
+        # deterministic regex would match `\x00FENCED999\x00` and try
+        # placeholders[999], raising IndexError.
+        src = "Before\x00FENCED999\x00After\n"
+        # Must not raise. Result is a string with the literal bytes
+        # rendered as escaped text — never as another block's content.
+        out = render_markdown(src)
+        self.assertIsInstance(out, str)
+        # The bytes survive in the output (escaped/literal) — they were
+        # never wrongly resolved.
+        self.assertIn("Before", out)
+        self.assertIn("After", out)
+
+    def test_in_range_sentinel_does_not_alias_real_block(self) -> None:
+        # One real fenced block (placeholders[0] will exist). A literal
+        # `\x00FENCED0\x00` byte sequence elsewhere in the source used to
+        # silently render placeholders[0]'s HTML at the wrong location,
+        # so the same fenced block's content appeared TWICE in the output.
+        src = (
+            "First paragraph.\n\n"
+            "```\nSECRET_FROM_FIRST_FENCE\n```\n\n"
+            "Middle paragraph: \x00FENCED0\x00 here.\n\n"
+            "Last paragraph.\n"
+        )
+        out = render_markdown(src)
+        # The real fenced block renders exactly once.
+        self.assertEqual(out.count("SECRET_FROM_FIRST_FENCE"), 1)
+        # Surrounding text survives.
+        self.assertIn("First paragraph", out)
+        self.assertIn("Last paragraph", out)
+
+    def test_per_render_token_does_not_leak_to_output(self) -> None:
+        # Two renders of the same source must produce equivalent visible
+        # output (modulo the token, which is internal and must NOT appear
+        # in the rendered HTML). The internal `\x00FENCED-…` grammar must
+        # be fully consumed in step 8.
+        src = "```\nA\n```\n"
+        a = render_markdown(src)
+        b = render_markdown(src)
+        self.assertIn("<pre><code>A", a)
+        self.assertIn("<pre><code>A", b)
+        # The internal sentinel grammar never leaks.
+        self.assertNotIn("\x00FENCED", a)
+        self.assertNotIn("\x00FENCED", b)
+        # And the rendered bodies match (no token differences visible).
+        self.assertEqual(a, b)
+
+
+class MarkdownRouteCollisionTests(unittest.TestCase):
+    """Integration: the /reports route survives a report file with the
+    sentinel-shaped bytes, and sibling routes stay healthy.
+    """
+
+    def setUp(self) -> None:
+        _invalidate_cache()
+        self.tmp = tempfile.mkdtemp(prefix="devloop-dash-coll-")
+        self.today = datetime.now().strftime("%Y-%m-%d")
+        # Project the dashboard will discover (needs a board/tickets/ dir).
+        coll_tix = os.path.join(self.tmp, "collproj", "board", "tickets")
+        os.makedirs(coll_tix, exist_ok=True)
+        with open(os.path.join(coll_tix, "C-1.md"), "w", encoding="utf-8") as f:
+            f.write(
+                "---\nid: C-1\ntitle: ok\ntype: Feature\nstate: Todo\nowner: pm\n"
+                "labels: [dev-loop, Feature, pm]\npriority: 3\n"
+                "created: 2026-06-22T00:00:00Z\n---\n"
+            )
+        rdir = os.path.join(self.tmp, "collproj", "reports", "pm-agent", "daily")
+        os.makedirs(rdir, exist_ok=True)
+        # The bad-bytes report — same shape as the ticket's repro.
+        with open(os.path.join(rdir, f"{self.today}.md"), "wb") as f:
+            f.write(b"Before\x00FENCED999\x00After\n")
+        # A second project so the index can confirm sibling rendering.
+        other_tix = os.path.join(self.tmp, "siblingproj", "board", "tickets")
+        os.makedirs(other_tix, exist_ok=True)
+        with open(os.path.join(other_tix, "S-1.md"), "w", encoding="utf-8") as f:
+            f.write(
+                "---\nid: S-1\ntitle: ok\ntype: Feature\nstate: Todo\nowner: pm\n"
+                "labels: [dev-loop, Feature, pm]\npriority: 3\n"
+                "created: 2026-06-22T00:00:00Z\n---\n"
+            )
+
+        self.port = _free_port()
+        handler = make_handler(self.tmp)
+        self.server = ThreadingHTTPServer(("127.0.0.1", self.port), handler)
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+
+    def tearDown(self) -> None:
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(timeout=2)
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _status(self, path: str) -> int:
+        try:
+            with urlopen(f"http://127.0.0.1:{self.port}{path}", timeout=2) as resp:
+                return resp.status
+        except Exception as e:
+            # A RemoteDisconnected has no .code (returns 0). Anything other
+            # than a real HTTP status is a failure for the bad-bytes route.
+            return getattr(e, "code", 0)
+
+    def test_bad_bytes_report_returns_200_no_disconnect(self) -> None:
+        # The whole point: a report containing the literal sentinel bytes
+        # used to kill the request thread (RemoteDisconnected). Now it
+        # must return a real HTTP status — 200 with escaped text is fine.
+        status = self._status(
+            f"/reports/collproj/pm-agent/daily/{self.today}.md"
+        )
+        self.assertEqual(status, 200)
+
+    def test_sibling_routes_unaffected(self) -> None:
+        # Index lists both projects, per-project view for sibling works,
+        # all independent of the bad report file.
+        with urlopen(f"http://127.0.0.1:{self.port}/", timeout=2) as resp:
+            self.assertEqual(resp.status, 200)
+            body = resp.read().decode("utf-8")
+        self.assertIn("collproj", body)
+        self.assertIn("siblingproj", body)
+        with urlopen(
+            f"http://127.0.0.1:{self.port}/p/siblingproj", timeout=2
+        ) as resp:
+            self.assertEqual(resp.status, 200)
+
+
+# ---------------------------------------------------------------------------
 # LOOP-7 — Index "last activity" sort.
 # ---------------------------------------------------------------------------
 

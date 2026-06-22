@@ -14,6 +14,7 @@ from __future__ import annotations
 import html
 import os
 import re
+import secrets
 import threading
 import time
 from datetime import datetime
@@ -410,14 +411,21 @@ def render_markdown(src: str) -> str:
     escape everything first and only re-introduce the constructs we recognize.
     """
     # 1. Extract fenced code blocks first — their contents are NOT processed
-    # further. Use a placeholder.
+    # further. Use a per-render unique token so user-controlled bytes in `src`
+    # cannot alias the placeholder grammar (LOOP-11): a deterministic sentinel
+    # like `\x00FENCED<n>\x00` was both crashable (out-of-range index →
+    # IndexError) and aliasable (in-range index → silent substitution of
+    # another block's content). The random token defeats both vectors.
     placeholders: list[str] = []
+    token = secrets.token_hex(16)
+    sentinel_prefix = f"\x00FENCED-{token}-"
+    sentinel_suffix = "\x00"
 
     def _stash_fenced(m: re.Match[str]) -> str:
         code = m.group(2)
         rendered = f"<pre><code>{html.escape(code)}</code></pre>"
         placeholders.append(rendered)
-        return f"\x00FENCED{len(placeholders) - 1}\x00"
+        return f"{sentinel_prefix}{len(placeholders) - 1}{sentinel_suffix}"
 
     work = _FENCED_RE.sub(_stash_fenced, src)
 
@@ -450,18 +458,26 @@ def render_markdown(src: str) -> str:
         b = block.strip()
         if not b:
             continue
-        if b.startswith("<h") or b.startswith("<pre") or "\x00FENCED" in b:
+        if b.startswith("<h") or b.startswith("<pre") or sentinel_prefix in b:
             out_blocks.append(b)
         else:
             out_blocks.append(f"<p>{b}</p>")
     rendered = "\n".join(out_blocks)
 
-    # 8. Restore fenced placeholders.
+    # 8. Restore fenced placeholders. Only this render's tokenized sentinels
+    # can match; user bytes carrying `\x00FENCED<n>\x00` are now literal text
+    # (escaped in step 2). Bounds check stays as defense in depth.
+    sentinel_re = re.compile(
+        rf"\x00FENCED-{re.escape(token)}-(\d+)\x00"
+    )
+
     def _restore(m: re.Match[str]) -> str:
         idx = int(m.group(1))
-        return placeholders[idx]
+        if 0 <= idx < len(placeholders):
+            return placeholders[idx]
+        return m.group(0)
 
-    return re.sub(r"\x00FENCED(\d+)\x00", _restore, rendered)
+    return sentinel_re.sub(_restore, rendered)
 
 
 def render_report_page(
