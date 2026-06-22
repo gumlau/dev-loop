@@ -151,7 +151,12 @@ def load_ticket(path: str) -> Ticket | None:
     try:
         with open(path, "r", encoding="utf-8") as f:
             text = f.read()
-    except OSError:
+    except (OSError, UnicodeDecodeError):
+        # A non-UTF-8 file (backup-restored, Windows-edited, anything not written
+        # as UTF-8) raises UnicodeDecodeError, NOT OSError. Treat it like an
+        # unreadable file — skip the ticket, keep the dashboard alive for the
+        # rest of the board. Fail-closing one card is fine; fail-closing every
+        # project's dashboard because one card has a bad byte is not (LOOP-6).
         return None
     fm = parse_frontmatter(text)
     if not fm.get("id"):

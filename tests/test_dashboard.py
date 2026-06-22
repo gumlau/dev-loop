@@ -231,5 +231,76 @@ class HTTPServerTests(unittest.TestCase):
         self.assertEqual(status, 404)
 
 
+class NonUtf8TicketTests(unittest.TestCase):
+    """LOOP-6 regression: a ticket file with non-UTF-8 bytes must NOT take down
+    the dashboard. One bad card is skipped; the rest of the board still renders.
+    """
+
+    def setUp(self) -> None:
+        self.tmp = tempfile.mkdtemp(prefix="devloop-dash-utf8-")
+        tickets_dir = os.path.join(self.tmp, "badproj", "board", "tickets")
+        os.makedirs(tickets_dir, exist_ok=True)
+        # One good ticket — must still surface in the rendered page.
+        with open(os.path.join(tickets_dir, "X-1.md"), "w", encoding="utf-8") as f:
+            f.write(
+                "---\nid: X-1\ntitle: ok\ntype: Feature\nstate: Todo\nowner: pm\n"
+                "labels: [dev-loop, Feature, pm]\npriority: 2\n"
+                "created: 2026-06-22T00:00:00Z\n---\n"
+            )
+        # One ticket with an invalid UTF-8 byte in the body. Before the fix this
+        # raised UnicodeDecodeError out of load_ticket and crashed the HTTP
+        # handler, killing the whole dashboard.
+        with open(os.path.join(tickets_dir, "X-2.md"), "wb") as f:
+            f.write(
+                b"---\nid: X-2\ntitle: bad\ntype: Bug\nstate: Todo\nowner: qa\n"
+                b"labels: [dev-loop, Bug, qa]\npriority: 1\n"
+                b"created: 2026-06-22T00:00:00Z\n---\n"
+                b"has \xff bytes\n"
+            )
+
+    def tearDown(self) -> None:
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_load_ticket_returns_none_on_bad_utf8(self) -> None:
+        bad = os.path.join(self.tmp, "badproj", "board", "tickets", "X-2.md")
+        self.assertIsNone(load_ticket(bad))
+        # Sibling good ticket still parses fine — the bad file does not poison
+        # subsequent loads.
+        good = os.path.join(self.tmp, "badproj", "board", "tickets", "X-1.md")
+        t = load_ticket(good)
+        assert t is not None
+        self.assertEqual(t.id, "X-1")
+
+    def test_discover_skips_bad_file_keeps_good_ones(self) -> None:
+        proj = find_project(self.tmp, "badproj")
+        assert proj is not None
+        ids = {t.id for t in proj.tickets}
+        self.assertIn("X-1", ids)
+        self.assertNotIn("X-2", ids)
+
+    def test_http_server_serves_index_and_project_with_bad_ticket_present(self) -> None:
+        port = _free_port()
+        handler = make_handler(self.tmp)
+        server = ThreadingHTTPServer(("127.0.0.1", port), handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            with urlopen(f"http://127.0.0.1:{port}/", timeout=2) as resp:
+                self.assertEqual(resp.status, 200)
+                body = resp.read().decode("utf-8")
+                self.assertIn("badproj", body)
+            with urlopen(f"http://127.0.0.1:{port}/p/badproj", timeout=2) as resp:
+                self.assertEqual(resp.status, 200)
+                body = resp.read().decode("utf-8")
+                # The good ticket renders; the bad one is silently skipped.
+                self.assertIn("X-1", body)
+                self.assertNotIn("X-2", body)
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
+
+
 if __name__ == "__main__":
     unittest.main()
