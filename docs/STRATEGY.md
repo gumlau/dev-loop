@@ -177,6 +177,29 @@ editing code: correct, safe-by-gates, and pleasant to operate at multi-project s
   via the per-key layout already shipped; §3d §17-binding-check for Dev — kept
   parked, value is spec-fuzzy and the deliverable would be a SKILL-edit proposal,
   which is more meta-meta than #3b's audit) remain Candidate ideas.
+- **2026-06-23** — LOOP-7 (dashboard v2 — live activity / state-move history /
+  throughput) verified Done against `b42dd6c`. All 8 ACs PASS: 20 newest-first
+  state-move events with agent attribution; one chip per agent under
+  `<key>/reports/` with `Nm ago` mtime + weekly/monthly link; idle-today path
+  ("agent · idle today") covered by test; throughput 10 filed / 6 shipped /
+  4 verified (7d) with "Nothing stuck ≥3 days. ✓"; index sorted newest-first;
+  4 path-traversal probes → 404, POST/DELETE → 501, bound 127.0.0.1 only;
+  re-measured 1000×90 fixture at 3.1ms cold (≥16× under 500ms ceiling); README
+  extended with 3 sub-sections + ASCII mocks; `bash tools/test.sh` 51/51 PASS.
+  Operator priority #1 (dashboard) is now **fully closed**: (a) kanban shipped
+  LOOP-1, (b)/(c)/(d) shipped LOOP-7. Dev also shipped **LOOP-11** mid-fire at
+  `6c97677` (QA-filed null-byte FENCED-sentinel collision in the markdown
+  renderer — per-render random token defeats both crash and silent-substitution
+  vectors). `ux-flows` lens at `6c97677`: **filed LOOP-12** (P4 Improvement, pm,
+  related to LOOP-7) — the dashboard report page surfaces the rendered markdown
+  + crumb + meta but offers no help for the §22 点评 channel; operators must
+  manually construct the sibling `*.review.md` path and have no visibility on
+  whether the agent has acted (the `*.review.acted` sidecar). LOOP-12 adds an
+  "Operator review (点评)" footer with the exact local drop-path and a
+  three-state indicator (none / awaiting / acted), purely filesystem-derived
+  and strictly read-only on top of `render_report_page`. Backlog at close:
+  Done 7 · In Review 0 pm · 2 pm Todo (LOOP-8, LOOP-10) + 1 pm Todo new
+  (LOOP-12) + 3 qa Todo (LOOP-5, LOOP-9, LOOP-11-fixed-pending-QA-verify).
 
 ## Candidate ideas
 
@@ -194,9 +217,13 @@ operator's stated priorities for this project.)*
      `38549fb` + non-UTF-8 fix `2707a63`). `tools/dashboard/`, 127.0.0.1-only,
      read-only, stdlib only.
    - **(b) live agent activity + (c) state-move history + (d) 7-day throughput** —
-     filed as **LOOP-7** (P3); extends LOOP-1's dashboard with a Recent activity
-     panel, Agent reports strip, Throughput mini-block, and an index-page
-     "last activity" timestamp.
+     ✅ **shipped via LOOP-7** (2026-06-22, commit `b42dd6c`). Recent activity
+     panel (20 newest state moves with agent attribution), Agent reports strip
+     (one chip per agent under `<key>/reports/` with `Nm ago` + weekly/monthly
+     link; `idle today` for absent), Throughput mini-block (7-day filed/shipped/
+     verified + "stuck ≥3 days" callout), and an index-page newest-first sort by
+     `last activity`. 8/8 ACs verified; `bash tools/test.sh` 51/51 green; cold
+     render 3.1ms on the 1000×360 fixture (≥16× under the 500ms ceiling).
 2. **First-class multi-project parallelism (operator's priority #2).** (a) Namespace
    `pm-state.json` / `qa-state.json` per-project under `<key>/` — exactly like `board/`
    and `reports/` already are — to remove the cross-project read-modify-write lost-update
