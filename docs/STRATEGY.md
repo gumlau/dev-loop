@@ -87,6 +87,16 @@ editing code: correct, safe-by-gates, and pleasant to operate at multi-project s
 - **Repo**: `git@github.com:gumlau/dev-loop.git`, branch `main`, MIT.
 - **Onboarded loops on this machine**: `boardku`, `citron-geo`, `citron-tool`, and now
   `dev-loop` (this one) — all `backend:"local"`, `mode:"live"`, `autonomy:"full"`.
+- **Dashboard 点评 panel shipped (LOOP-12, `48c06c0`, 2026-06-23).** Every report page
+  (`/reports/<key>/<agent>/<period>/<filename>`) now renders an "Operator review (点评)"
+  block below the report body: the **exact local drop path** of the sibling
+  `<filename>.review.md` (reflecting the configured `--data-dir`) and a three-state
+  indicator — **none** (drop path + nudge), **awaiting** (`*.review.md` exists, agent
+  hasn't acted), **acted** (`*.review.acted` sidecar is newer, with agent + ts parsed
+  from mtime). Purely filesystem-derived (existence + mtime — never reads sidecar
+  content), no new route, no writes. Path safety unchanged (LOOP-7 AC5 invariant
+  held). +5 `ReviewPanelTests` in `tests/test_dashboard.py` (62/62 OK). Closes the
+  ux-flows friction surfaced under the lens sweep at `6c97677`.
 
 ## Personas
 
@@ -300,6 +310,46 @@ editing code: correct, safe-by-gates, and pleasant to operate at multi-project s
   LOOP-11) · Todo pm 2 (LOOP-10, LOOP-12) · Todo qa 1 (LOOP-13) · Blocked qa 1
   (LOOP-5). Bottleneck is now QA verification capacity on LOOP-9/11 → a QA fire
   would unblock more than another PM fire would.
+
+- **2026-06-23 (T20:05Z)** — 10th PM fire. **LOOP-12 (dashboard 点评 panel) verified
+  Done** against ship `48c06c0`. All 8 ACs PASS: panel renders below the report body;
+  the **exact local drop path** under the configured `--data-dir` is shown in a
+  `<code>` block; the three states (`none`/`awaiting`/`acted`) render with the
+  exact wording from the ticket; state detection is purely filesystem-based (mtime +
+  existence — leak check confirms the `.review.md` body never appears in the rendered
+  page); path-traversal regression still 404; perf budget unchanged; `bash tools/test.sh`
+  62/62 OK (5 new `ReviewPanelTests` > 3-min); README adds a paragraph under "Run the
+  dashboard" with the `references/conventions.md#22-...` cross-link. Verification used
+  mktemp + a live probe against the real data dir — the rendered drop path matched
+  `~/.claude/plugins/data/dev-loop/dev-loop/reports/pm-agent/daily/2026-06-23.md.review.md`
+  exactly. New product SHA `e443d1c` → `48c06c0` (LOOP-12 is the only product-code
+  commit; PM bookkeeping aside). Per the new-product-SHA branch: reset
+  `sweptLensesAtSha` and re-rotated to `strategy-gaps` first at `48c06c0`. Diff-focused
+  review: LOOP-12 closes a known ux-flows gap (the §22 channel had no dashboard
+  affordance) — it does not open a new capability surface, so `strategy-gaps` finds
+  **0 net-new tickets**. Dedupe-against-reality at `48c06c0`: operator priorities
+  #1 (dashboard, a–d) and #2 (multi-project, a–c) remain FULLY closed; #3a self-lint
+  shipped (LOOP-4); #3b conventions audit filed (LOOP-10) awaiting Dev; #3c data-dir
+  uniformity implicit/done; #3d §17-binding-check parked Candidate. The 点评 panel
+  itself completes a coupled goal-pair — **Observability / steerability** (the
+  operator can now see + know the drop path + know the agent has acted) and the
+  realisation of the **"steer by reviewing, not by editing code"** north-star —
+  without trading off the dashboard's read-only invariant (the LOOP-12 "out of scope"
+  write-endpoint stays deliberately deferred; not refiled). Job A: 1 In Review pm
+  (LOOP-12 → Done). Job B: 0 blocked pm; 0 stale `needs-pm` without `blocked`.
+  Board at close: Done 10 (LOOP-1/2/3/4/6/7/8/9/11/12) + LOOP-13 already Done
+  qa-side · In Review 0 · Todo pm 2 (LOOP-10, LOOP-16) · Todo qa 2 (LOOP-14,
+  LOOP-15) · Blocked qa 1 (LOOP-5) · In Progress 0. Next un-swept lens at `48c06c0`
+  is `ux-flows` (then `consistency`, `conversion-retention`, etc.). Next-fire
+  decision tree: (a) Dev moves LOOP-10/16 → In Review → Job A pickup; (b) HEAD
+  moves with NEW product code beyond `48c06c0` → reset `sweptLensesAtSha` and
+  re-rotate from `strategy-gaps`; (c) operator edits STRATEGY.md
+  (length ≠ persisted) → doc-watch re-entry; (d) manual `/pm-agent` with no
+  a/b/c → rotate to `ux-flows` at `48c06c0`. §17 boundary held: pre-existing
+  skills/ + references/ dirty tree persists across fires (operator/Reflect WIP),
+  still not scooped per §7 staging discipline (this fire stages only
+  `docs/STRATEGY.md`). pm Todo backlog at 2 — depth-adequate; Dev shipping
+  LOOP-10/16 + QA verifying LOOP-14/15 unblocks more than another PM fire would.
 
 ## Candidate ideas
 
