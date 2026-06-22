@@ -1,22 +1,42 @@
 # conventions.md audit — §17 proposal report
 
-**Audit target:** `references/conventions.md` at HEAD `48c06c0`
-(`feat(dashboard): surface 点评 channel on report page (LOOP-12)`).
-**Pre-audit line count:** 1,569 lines (§0 → §23, plus Topology + ToC).
+**Audit target:** `references/conventions.md` in the **working tree** at audit time
+(commit `48c06c0` + 9 uncommitted §17-protected operator WIP files; +22 lines vs
+the committed file). Originally the header claimed "HEAD `48c06c0`"; LOOP-18 amended
+this to disclose the actual snapshot the audit read.
+**Pre-audit line count:** **1,569 lines** in the working tree at audit time (HEAD
+`48c06c0` is 1,547 lines — same content as the WT in the stable prefix; the 22-line
+delta is the 9 dirty §17-protected files' uncommitted edits in the §11/§14/§17
+neighborhoods). Same end-section either way (`§23`).
+**Dirty files included in the WT snapshot** (per `git status` at audit time):
+`references/config-schema.md`, `references/conventions.md`,
+`skills/{architect,init,ops,pm,qa,reflect,signal}-agent/SKILL.md`. Only
+`references/conventions.md` matters for the line refs in this report.
+**Line-ref applicability.** Every `references/conventions.md:Lxxx-Lyyy` citation
+below is valid against the **working-tree snapshot** the audit read, NOT against
+committed HEAD. To apply a finding at HEAD, either (i) `wc -l < references/conventions.md`
+to confirm you are at WT, then jump to the cited range, or (ii) re-locate the
+quoted text at HEAD via `git show HEAD:references/conventions.md | grep -n
+'<phrase>'`. Late-file findings (post-L1100) drift ~20 lines lower at HEAD;
+early-file findings (pre-L1000) usually still resolve at the cited range.
 **Projected delta if every proposal in §4 were applied:** ≈ **−238 lines** (≈ 15%
-reduction). Detailed math in §4.
+reduction). Baseline is the WT line count (1,569). Detailed math in §4.
 **§17 boundary statement:** this is a **findings-only** report. Per LOOP-10
 AC#4, `references/conventions.md` is **byte-identical** to HEAD pre-ticket
 after this ship — no rule restated below is rewritten by Dev. The operator
 (or Reflect via a `[reflect-proposal]`) applies findings selectively.
 
-**Method.** Single pass through the committed file (no comparison against
-WIP in the working tree). Every finding cites a `references/conventions.md:Lxxx-Lyyy`
-range. Findings are bucketed into the four AC#1 categories — Redundancies,
+**Method.** Single pass through the **working-tree** file (which carries the 9
+§17-protected operator WIP edits listed above); line refs are valid against the
+WT at audit time. The committed HEAD differs by ~22 lines in the post-L1100
+neighborhood; spot-checking a late-file finding at HEAD requires re-locating
+the quoted text. Every finding cites a `references/conventions.md:Lxxx-Lyyy`
+range (WT). Findings are bucketed into the four AC#1 categories — Redundancies,
 Movable, Contradictions/Staleness, Proposed cuts/moves. Findings marked
 **KEEP — no action** are ones that look redundant or movable in isolation
 but are load-bearing on second look; they are listed so a future audit
-doesn't re-raise them.
+doesn't re-raise them. Findings marked **WITHDRAWN — already in WT** were
+proposals that the WT snapshot turned out to already address (LOOP-18 pass).
 
 **Dedupe-against-reality (per AC and §8).** One finding overlaps with an
 already-filed ticket:
@@ -155,21 +175,30 @@ L1096-L1107, ~12 lines) and keep the rest inline.
 
 ## 3. Contradictions / Staleness
 
-### C-1 · §21 outward-agent state-file path is stale vs §11
-**Lines:** `references/conventions.md:L1178-L1181` says outward agents
-have "its own state file next to `projects.json` — `ops-state.json` /
-`architect-state.json` / `signal-state.json`". But §11 was rewritten
-(see L539-L555) to split runtime state into two scopes:
-- Global root: `projects.json` + `lessons.md`
-- Per-project: `${CLAUDE_PLUGIN_DATA}/<project-key>/` for the agent
-  state files (pm, qa, ops, architect, signal) and reports-state.
+### C-1 · §21 outward-agent state-file path is stale vs §11 — **WITHDRAWN (already in WT)**
+**LOOP-18 follow-up:** WITHDRAWN. The WT snapshot the audit was performed
+against already contains the proposed fix at `references/conventions.md:L1178-L1181`
+("**per-project** state file under `${CLAUDE_PLUGIN_DATA}/<project-key>/` (§11)").
+At committed HEAD `48c06c0` the stale phrasing still lives at **L1157-L1160**
+(off by ~21 lines from the audit's L1178-L1181 cite), but applying C-1 at WT
+is a no-op (already done) and applying at HEAD requires re-locating the line
+range first. The §11/§21 reconciliation is therefore already in the operator's
+WIP, awaiting a commit; the audit's role is only to surface that the WIP
+addresses it. P-5 below is updated to drop C-1's edit and keep only the
+remaining staleness fixes (C-2 and the §14 phrasing).
 
-The phrasing "next to `projects.json`" at L1178-1181 is now imprecise —
-those files live in the per-project subdir, not at the data-dir root.
-This is genuine staleness: §21 wasn't updated when §11 was split.
-Recommended fix in **P-5** below: change L1180-1181 to
-"… per-project state file under `${CLAUDE_PLUGIN_DATA}/<project-key>/`
-(§11)".
+*Original finding (kept for trail):*
+> `references/conventions.md:L1178-L1181` says outward agents
+> have "its own state file next to `projects.json` — `ops-state.json` /
+> `architect-state.json` / `signal-state.json`". But §11 was rewritten
+> (see L539-L555) to split runtime state into two scopes:
+> - Global root: `projects.json` + `lessons.md`
+> - Per-project: `${CLAUDE_PLUGIN_DATA}/<project-key>/` for the agent
+>   state files (pm, qa, ops, architect, signal) and reports-state.
+>
+> The phrasing "next to `projects.json`" at L1178-1181 is now imprecise —
+> those files live in the per-project subdir, not at the data-dir root.
+> This is genuine staleness: §21 wasn't updated when §11 was split.
 
 ### C-2 · §23 `reports-state.json` path is stale vs §11
 **Lines:** `references/conventions.md:L1534-L1535` says
@@ -303,13 +332,15 @@ already states the hand-off mechanism.
 
 ### P-5 · Reconcile §21 and §23 state-file paths to §11
 
-Not a cut — a staleness fix. Three single-line edits:
-- `L673` (§14 lessons.md path): qualify with "at the data-dir root
-  — shared per-operator (§11)".
-- `L1178-L1181` (§21 outward agents state-file path): change "next to
-  `projects.json`" → "per-project under `${CLAUDE_PLUGIN_DATA}/<project-key>/` (§11)".
-- `L1534-L1535` (§23 reports-state.json path): change "next to
-  `projects.json`" → "per-project under `${CLAUDE_PLUGIN_DATA}/<project-key>/` (§11)".
+Not a cut — a staleness fix. Two remaining single-line edits (LOOP-18
+withdrew the third — see C-1: the WT snapshot already carries the
+L1178-L1181 fix, so applying it would be a no-op):
+- `L673` (§14 lessons.md path; in the stable prefix where WT and HEAD
+  agree on line numbering): qualify with "at the data-dir root — shared
+  per-operator (§11)".
+- `L1534-L1535` (§23 reports-state.json path; WT line ref — at HEAD this
+  same text lives at L1512-L1513): change "next to `projects.json`" →
+  "per-project under `${CLAUDE_PLUGIN_DATA}/<project-key>/` (§11)".
 
 Risk: low. Read-only-side path; agents already create these files in
 the per-project subdir (see `pm-state.json`/`qa-state.json` paths in
@@ -384,11 +415,13 @@ For an honest audit, a few things I looked for and decided NOT to flag:
   headings and the `md-links` lint doesn't see them. False positive
   for any "duplicate heading" rule.
 - **§24 (Codex)** at the tail of the install's `~/.dev-loop/`
-  conventions copy: that section is **NOT** in HEAD's
-  `references/conventions.md` (which ends at §23, L1569). Auditing
-  uncommitted content would violate the boundary of "what is the
-  source of truth right now". If §24 lands in a later commit, a
-  follow-up audit pass will catch any drift it introduces.
+  conventions copy: that section is **NOT** in `references/conventions.md`
+  in either committed HEAD (`48c06c0`, ends at §23 / L1547) or the WT
+  snapshot the audit was taken against (also ends at §23, L1569 with
+  the 22-line WIP delta). Auditing un-committed third-party (install-tree)
+  content would violate the boundary of "what is the source of truth
+  right now". If §24 lands in a later commit, a follow-up audit pass
+  will catch any drift it introduces.
 - **The §3 state-machine table** vs the §18 operation mapping: both
   describe state, but at orthogonal layers (semantic vs storage).
   No collapse opportunity.
