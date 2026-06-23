@@ -129,6 +129,19 @@ editing code: correct, safe-by-gates, and pleasant to operate at multi-project s
   Closes the onboarding-correctness defect under the "Onboarding is a
   near-no-op" goal — the same goal-shape as LOOP-8 (README opener), LOOP-14
   (README §18 anchor), LOOP-16 (`run-loop.sh --help`).
+- **`extramarketplace-source-discriminator` lint rule shipped (LOOP-22,
+  `04b457d`, 2026-06-23).** `scripts/lint-plugin.py` gains a new rule that
+  scans every fenced JSON snippet under an `extraKnownMarketplaces` key in
+  any tracked `*.md` and flags an inner `"source"` whose value is outside
+  Claude Code's accepted set (`directory` / `github` / `npm`). The same rule
+  prefix covers both finding-shapes from the LOOP-21 root-cause analysis
+  (wrong discriminator token + a missing `source` key entirely). +165-line
+  pure-stdlib script (re-uses the LOOP-4 / LOOP-15 / LOOP-19 lint harness);
+  fixture under `tests/fixtures/lint-bad/extramarketplace/README.md`
+  exercises both shapes; +11 test in `tests/test_lint_plugin.py` wired into
+  `tools/test.sh`. Locks in the LOOP-21 onboarding-correctness gain as a
+  regression-prevention layer — a future README edit that re-introduces the
+  bad token will fail the gate before it can break operator settings.json.
 
 ## Personas
 
@@ -642,6 +655,56 @@ editing code: correct, safe-by-gates, and pleasant to operate at multi-project s
   (then `consistency`, `conversion-retention`, `polish-performance`,
   `data-analytics`, `trust-safety`, `competitive-parity` — 7 remain in
   this fresh cycle).
+
+- **2026-06-23 T09:52Z — 17th PM fire (dev-loop):** decision-tree branch
+  (a) of fire 16 fired — Dev picked LOOP-22 and QA verified it Done
+  (cross-lane no PM motion), shipping the
+  `extramarketplace-source-discriminator` lint rule at **`04b457d`**.
+  Effective product SHA advanced `9631a01 → 04b457d` (LOOP-22 is real
+  Dev-shipped product code, not a PM doc commit) → per §19, **reset
+  `sweptLensesAtSha`** and re-rotated from `strategy-gaps` first at
+  `04b457d`. Persistence drift: per-key `pm-state.json` at fire-open
+  showed `reviewedShas.dev-loop=3cac50c` and `sweptLensesAtSha` from
+  fires 13–15 — fire 16's claimed atomic write did NOT land at the
+  per-key path (likely went to the legacy flat root `pm-state.json`
+  instead, which still carries unrelated boardku/citron-geo entries).
+  Reconciled from ground truth (git log + Decisions journal + ticket-
+  file states + fire 16's daily report entry). STRATEGY.md length
+  53,788 B on entry — matches fire 16's post-fire write, no operator
+  edit detected. **Job A — no-op** (0 In Review pm-owned; LOOP-22 was
+  qa-owned, LOOP-23 is QA's new Bug). **Job B — no-op** (0 pm-owned
+  `blocked`; 0 stale `needs-pm` without `blocked`; LOOP-5 stays
+  qa-owned via `needs-qa`). **Job C — `strategy-gaps` swept at
+  `04b457d`: 0 filed** (rotation 1/8 at this fresh cycle-reset SHA).
+  Diff focus = LOOP-22 ship (`scripts/lint-plugin.py` +165,
+  `README.md` +28/−3, fixture +23, `tests/test_lint_plugin.py` +11).
+  LOOP-22 hardens an existing onboarding-correctness fix; it does NOT
+  open any new capability surface. Dedupe-against-reality at `04b457d`:
+  priority #1 (dashboard LOOP-1/3/7/12/17/20) closed; priority #2
+  (multi-project LOOP-2/16) closed; #3a (self-lint LOOP-4) **extended**
+  by LOOP-15/19/22 ships; #3b (conventions audit LOOP-10) shipped —
+  operator/Reflect selective-apply still pending; #3c (data-dir
+  uniformity) implicit/done; #3d (§17-binding-check) parked Candidate.
+  **PM guardrail "filing zero is a valid run" holds** — board healthy
+  (21 Done, 2 qa Todo: LOOP-5 blocked + LOOP-23 fresh Bug; 0 pm Todo).
+  Padding `Todo pm` with a marginal lens-finding while QA's LOOP-23 Bug
+  is the next natural Dev pick (rank 1 Urgent-bug-class · priority 2)
+  would starve the real bottleneck. **§7 staging:** only
+  `docs/STRATEGY.md` committed; the 9-file
+  `skills/+references/+config-schema` operator WIP persists across the
+  **10th consecutive fire** un-scooped (§17-protected). **§22 channel
+  clean** — 0 `*.review.md` siblings, PM `lessons.md` section empty,
+  no 点评 to distill. **Next-fire decision tree:** (a) Dev picks
+  LOOP-23 → In Review qa → QA Job A pickup (cross-lane, no PM motion);
+  (b) QA unblocks LOOP-5 → Dev pickup → eventual PM/QA verify;
+  (c) operator commits the 9-file WIP → new product SHA → reset
+  `sweptLensesAtSha` and re-rotate from `strategy-gaps`;
+  (d) operator edits STRATEGY.md (length ≠ post-this-fire persisted)
+  → doc-watch re-entry;
+  (e) manual `/pm-agent` with no a/b/c/d → rotate to **`ux-flows`**
+  at `04b457d` (then `consistency`, `conversion-retention`,
+  `polish-performance`, `data-analytics`, `trust-safety`,
+  `competitive-parity` — 7 remain in this fresh cycle).
 
 ## Candidate ideas
 
