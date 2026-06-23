@@ -91,15 +91,40 @@ claim / dedupe / blocked protocols, and the self-evolution boundary — live in
 claude --plugin-dir /path/to/dev-loop
 ```
 
-**Personal, persistent** — via a local marketplace in `~/.claude/settings.json`:
+**Personal, persistent (recommended) — `claude plugin` CLI:**
+```bash
+claude plugin marketplace add /path/to/dev-loop
+claude plugin install dev-loop@dev-loop
+```
+The CLI writes the correct `extraKnownMarketplaces` entry into `~/.claude/settings.json`
+itself and validates it before saving — preferred over editing settings.json by hand.
+The `<abs-path>` must contain a `.claude-plugin/marketplace.json` (the dev-loop repo
+root carries one with `source: "./"`, so the repo root doubles as both marketplace
+and plugin).
+
+**Personal, persistent — `settings.json` (if you prefer to edit it directly):**
 ```json
 {
   "extraKnownMarketplaces": {
-    "local": { "source": { "source": "local", "path": "/path/to/parent-of-dev-loop" } }
+    "dev-loop": { "source": { "source": "directory", "path": "/path/to/dev-loop" } }
   }
 }
 ```
-then `/plugin install dev-loop@local`. Verify with `/plugin list`; the skills appear as
+then `/plugin install dev-loop@dev-loop`. Two requirements operators miss:
+- The `path` must point **at the plugin/marketplace directory itself** (the dir that
+  contains `.claude-plugin/marketplace.json`), **not its parent**.
+- The inner discriminator must be **`directory`** exactly as written above. Any other
+  value (including the intuitive-looking guesses) makes Claude Code reject the entire
+  `settings.json` on startup (`source.source: Invalid input`), disabling **all** your
+  plugins and hooks until you fix it. The CLI install above avoids this entirely.
+
+> ⚠ The `directory` source must remain on disk **permanently**. If the path is
+> deleted or moved, the next time Claude Code clears its marketplace metadata cache
+> every `/dev-loop:*` slash command will fail with `Unknown command: …` — including
+> headless `claude -p` loop runs. To declutter, **move** the directory and update
+> the path in `settings.json`; don't just delete it.
+
+Verify with `/plugin list`; the skills appear as
 `/dev-loop:pm-agent`, `/dev-loop:qa-agent`, `/dev-loop:dev-agent`,
 `/dev-loop:sweep-agent`, `/dev-loop:reflect-agent`, `/dev-loop:ops-agent`,
 `/dev-loop:architect-agent`, `/dev-loop:signal-agent`, and `/dev-loop:init`.
