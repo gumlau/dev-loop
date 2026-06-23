@@ -535,6 +535,58 @@ editing code: correct, safe-by-gates, and pleasant to operate at multi-project s
   proposal payload from LOOP-10) and **QA unblock of LOOP-5** are the
   highest-leverage next moves.
 
+- **2026-06-23 T09:20Z — 15th PM fire (dev-loop project).** Decision-tree
+  branch **(d)**: manual `/pm-agent`, no new product code since `3cac50c`
+  (HEAD `e9d09ae` is purely the 13th+14th fires' own `docs/STRATEGY.md`
+  bookkeeping commits, +124 lines, no other files touched), strategy doc
+  length unchanged at 46040 (matches `docWatch` — no operator edit), so
+  `reviewedShas.dev-loop` stays pinned at `3cac50c` and `sweptLensesAtSha`
+  is preserved. Rotated to the predicted next un-swept lens:
+  **`consistency` at `3cac50c`**. Job A: 0 In Review pm-owned. Job B:
+  0 pm-owned blocked; 0 stale `needs-pm` without `blocked` (LOOP-5 stays
+  `qa`-owned).
+  Job C — `consistency` lens: walked the cross-surface terminology and
+  install-flow parity between operator-facing artifacts (README, RUNNING.md,
+  STRATEGY.md, CHANGELOG, the example config vs the schema doc, the three
+  tools/ surfaces). Real consistency defect surfaced: **`README.md` L97-101
+  "Personal, persistent" install snippet uses the wrong marketplace `source`
+  discriminator** — it shows `"source": "local"`, but the discriminator
+  Claude Code accepts is **`"source": "directory"`**; the bad token makes
+  Claude Code reject the **entire** `settings.json` on startup
+  (`source.source: Invalid input`), disabling ALL the operator's plugins and
+  hooks, not just dev-loop. Verified against this machine's actual working
+  `~/.claude/settings.json` for `dev-loop-local`, which uses
+  `"source": "directory"` against the plugin dir itself (which carries a
+  `.claude-plugin/marketplace.json` at its root with `source: "./"` so the
+  repo root doubles as both marketplace and plugin). The snippet's
+  secondary `"path": "/path/to/parent-of-dev-loop"` is also wrong on its
+  axis (working installs point at the plugin dir, not its parent).
+  **Filed LOOP-21** (P2, Improvement, `pm`, related to LOOP-8/14/16; the
+  same first-impression onboarding shape — fix the docs to match how
+  operators actually install). Lane-purity note: a doc *defect* is closer
+  to a Bug (QA's), but the LOOP-8 precedent (a README correctness fix in
+  the `Improvement`+`pm` shape, no controversy) applies — and the loop is
+  currently stalled (Dev queue empty, In Review empty), so filing a real
+  well-scoped Todo against the empty Dev queue beats a 3rd no-op fire.
+  Dedupe-against-tickets: 6 install/marketplace hits across LOOP-1/2/3/7/
+  13/16, none flag the README install snippet — verified. Dedupe-against-
+  reality: still present at HEAD `e9d09ae` (`grep "extraKnownMarketplaces"
+  README.md docs/ CHANGELOG.md` returns only `README.md:97-98`).
+  Board at close: Done **19** (unchanged) · In Review 0 · In Progress 0 ·
+  Todo pm **1 (LOOP-21)** · Todo qa 0 · Blocked qa 1 (LOOP-5) · counter
+  **21 → 22**. §17 boundary held: pre-existing `skills/`+`references/`
+  dirty tree (9 substantive files, operator/Reflect WIP) persists across
+  fires, not scooped per §7 — this fire stages only `docs/STRATEGY.md`.
+  `pm-state.json` rewritten atomically (temp + rename, §11) with
+  `sweptLensesAtSha[consistency] = T09:20Z`. §22 channel clean — 0
+  `*.review.md` siblings, PM `lessons.md` section empty. Next-fire decision
+  tree: (a) Dev picks up LOOP-21 → In Review → PM Job A pickup; (b) new
+  product code beyond `3cac50c` → reset `sweptLensesAtSha` and re-rotate
+  from `strategy-gaps`; (c) operator edits STRATEGY.md (length ≠ persisted)
+  → doc-watch re-entry; (d) manual `/pm-agent` with no a/b/c → rotate to
+  **`conversion-retention`** at `3cac50c` (then `polish-performance`,
+  `data-analytics`, `trust-safety`, `competitive-parity` — 5 remain).
+
 ## Candidate ideas
 
 *(PM's parking lot — filed as tickets as the backlog drains. The first three are the
