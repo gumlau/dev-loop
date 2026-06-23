@@ -97,6 +97,17 @@ editing code: correct, safe-by-gates, and pleasant to operate at multi-project s
   content), no new route, no writes. Path safety unchanged (LOOP-7 AC5 invariant
   held). +5 `ReviewPanelTests` in `tests/test_dashboard.py` (62/62 OK). Closes the
   ux-flows friction surfaced under the lens sweep at `6c97677`.
+- **Dashboard index blocked-count parity shipped (LOOP-20, `3cac50c`, 2026-06-23).**
+  Each project card on the dashboard index (`/`) now surfaces an `N blocked` line
+  when ≥1 ticket is in `state:"Todo"` with the `blocked` label (zero is silent — no
+  chip); count matches `tools/dl-status.py` exactly per §9. Self-contained
+  `Project.blocked_count` helper on `tools/dashboard/board.py` (+11) + a conditional
+  render in `render_index` on `tools/dashboard/server.py` (+23) — no new route,
+  dashboard invariants preserved (127.0.0.1, read-only, path-traversal still 404).
+  +7 `IndexBlockedCountTests` in `tests/test_dashboard.py` (`bash tools/test.sh`
+  79/79). Closes the CLI↔GUI parity gap surfaced under the `ux-flows` lens at
+  `d12a4f0`; operator can now triage stalled loops at-a-glance without one click
+  per project.
 
 ## Personas
 
@@ -397,6 +408,47 @@ editing code: correct, safe-by-gates, and pleasant to operate at multi-project s
   still not scooped per §7 staging discipline (this fire stages only
   `docs/STRATEGY.md`). pm Todo backlog at 2 — depth-adequate; Dev shipping
   LOOP-10/16 + QA verifying LOOP-14/15 unblocks more than another PM fire would.
+- **2026-06-23 (T13:30Z)** — 13th PM fire on `dev-loop`. **LOOP-20 (dashboard index
+  blocked-count parity) verified Done** by an **earlier same-day partial PM fire at
+  T13:15Z** (run-id `pm-2026-06-23-LOOP20`) that wrote the state-move comment + flipped
+  the ticket to Done with the full 8/8 verification trail, but did NOT write its
+  close-report (no Decisions-log entry, no daily-report entry, no `pm-state.json`
+  update — a partial fire that crashed/exited between Job-A write and §3 close).
+  Honest-audit recovery this fire: re-confirmed all 8 LOOP-20 ACs against running
+  product at HEAD `3cac50c` (index card for `dev-loop` renders `1 blocked` matching
+  LOOP-5; other cards stay clean at 0; `tools/dl-status.py` parity exact at
+  `boardku=0, citron-geo=0, citron-tool=0, dev-loop=1`; confined to
+  `Project.blocked_count` helper + `render_index` render line; sort-by-last-activity
+  unchanged; 127.0.0.1-only + read-only + path-traversal-404 invariants held; +7
+  `IndexBlockedCountTests`; `bash tools/test.sh` 79/79). Product HEAD moved
+  `d12a4f0` → `3cac50c` with one product-code commit in window (LOOP-20 ship).
+  Per the new-product-SHA branch: reset `sweptLensesAtSha` and re-rotated to
+  `strategy-gaps` first at `3cac50c`. Diff-focused review: LOOP-20 **closes** a
+  known CLI↔GUI parity gap (`dl-status` already exposed per-project blocked count;
+  the dashboard index now does too) — does NOT open a new capability surface.
+  Dedupe-against-reality at `3cac50c`: operator priorities #1 (dashboard, a–d +
+  parity polish) and #2 (multi-project, a–c) remain FULLY closed; #3a self-lint
+  shipped (LOOP-4); #3b conventions audit shipped (LOOP-10, awaiting operator /
+  Reflect selective-apply); #3c data-dir uniformity implicit/done; #3d
+  §17-binding-check parked Candidate (informally answered by LOOP-10). **0 net-new
+  strategy-gaps tickets** — board at close mirrors prior fire (19 Done, 1 blocked
+  qa, 0 elsewhere), filing zero is right per PM guardrails ("filing zero is a valid
+  run"). Job A at fire-open: 0 In Review pm (LOOP-20 already Done via the partial
+  fire). Job B: 0 pm-owned blocked; 0 stale `needs-pm` without `blocked` (LOOP-5
+  is qa-owned via `needs-qa`, not mine). §17 boundary held: pre-existing `skills/`
+  + `references/` dirty tree persists across fires (operator/Reflect WIP), still
+  not scooped per §7 staging discipline (this fire stages only `docs/STRATEGY.md`).
+  Next un-swept lens at `3cac50c` is `ux-flows` (then `consistency`,
+  `conversion-retention`, `polish-performance`, `data-analytics`, `trust-safety`,
+  `competitive-parity` — 7 remain). Next-fire decision tree: (a) Dev/QA work
+  resumes (LOOP-5 unblock is qa's lane); (b) HEAD moves with NEW product code
+  beyond `3cac50c` → reset `sweptLensesAtSha` and re-rotate from `strategy-gaps`;
+  (c) operator edits STRATEGY.md (length ≠ persisted) → doc-watch re-entry;
+  (d) manual `/pm-agent` with no a/b/c → rotate to `ux-flows` at `3cac50c`.
+  Bottleneck downstream of PM is unchanged: **operator review of
+  `docs/CONVENTIONS_AUDIT.md`** (the §17 proposal payload from LOOP-10) and
+  **QA unblock of LOOP-5** are the highest-leverage next moves.
+
 - **2026-06-23 (T04:55Z)** — 12th PM fire on `dev-loop`. Manual `/pm-agent` against
   HEAD `d12a4f0` (the previous fire's own `docs(strategy)` commit recording
   LOOP-10/16 shipped — **no new product code** since `18a2864`, so the lens-reset
