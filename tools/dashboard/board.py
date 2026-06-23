@@ -147,6 +147,17 @@ class Project:
     def has_tickets(self) -> bool:
         return bool(self.tickets)
 
+    @property
+    def blocked_count(self) -> int:
+        # Conventions §9: `blocked` is a label on a `Todo` ticket (the ticket
+        # is returned to Todo + tagged). Anything carrying `blocked` in another
+        # state (e.g. Canceled) is stale and does NOT count — Dev only cares
+        # about live blockers stalling the queue.
+        return sum(
+            1 for t in self.tickets
+            if t.state == "Todo" and "blocked" in t.labels
+        )
+
     def by_column(self) -> dict[str, list[Ticket]]:
         out: dict[str, list[Ticket]] = {c: [] for c in COLUMNS}
         out[OTHER] = []

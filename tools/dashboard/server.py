@@ -326,10 +326,16 @@ def render_index(projects: list[Project]) -> str:
                 lastact = f"last activity: {_humanize_ago(max(0.0, now - p.last_activity_mtime))}"
             else:
                 lastact = "last activity: never"
+            blocked_line = ""
+            if p.blocked_count > 0:
+                blocked_line = (
+                    f"<div class='meta blocked'>{p.blocked_count} blocked</div>"
+                )
             body.append(
                 "<div class='project'>"
                 f"<a href='/p/{html.escape(p.key)}'>{html.escape(p.key)}</a>"
                 f"<div class='meta'>{meta}</div>"
+                f"{blocked_line}"
                 f"<div class='lastact'>{html.escape(lastact)}</div>"
                 "</div>"
             )

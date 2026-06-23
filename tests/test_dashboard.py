@@ -1113,5 +1113,143 @@ class ReviewPanelTests(unittest.TestCase):
             self.assertIsNone(acted_mtime)
 
 
+# ---------------------------------------------------------------------------
+# LOOP-20 — Index blocked-count indicator.
+# ---------------------------------------------------------------------------
+
+
+_TICKET_TEMPLATE_FOR_BLOCKED = """---
+id: {id}
+title: {title}
+type: {type}
+state: {state}
+owner: {owner}
+labels: [{labels}]
+priority: {priority}
+assignee: null
+relatedTo: []
+duplicateOf: null
+created: 2026-06-23T10:00:00Z
+updated: 2026-06-23T10:00:00Z
+---
+## Context
+seed for blocked-count tests.
+
+---
+## Comments
+"""
+
+
+def _seed_blocked_board(
+    data_dir: str, project_key: str, fixtures: list[tuple[str, str, str, str, str]]
+) -> None:
+    """Each fixture is `(id, type, state, owner, labels_csv)`."""
+    tickets_dir = os.path.join(data_dir, project_key, "board", "tickets")
+    os.makedirs(tickets_dir, exist_ok=True)
+    for tid, ttype, state, owner, labels in fixtures:
+        with open(os.path.join(tickets_dir, f"{tid}.md"), "w", encoding="utf-8") as f:
+            f.write(_TICKET_TEMPLATE_FOR_BLOCKED.format(
+                id=tid, title=f"blocked-fixture {tid}", type=ttype,
+                state=state, owner=owner, labels=labels, priority=4,
+            ))
+
+
+class IndexBlockedCountTests(unittest.TestCase):
+    """LOOP-20: the index card surfaces a blocked-count line when a project has
+    one or more Todo tickets carrying the `blocked` label (§9). Zero is silent."""
+
+    def setUp(self) -> None:
+        _invalidate_cache()
+        self.tmp = tempfile.mkdtemp(prefix="devloop-dash-blocked-")
+
+    def tearDown(self) -> None:
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_blocked_count_helper_counts_todo_with_blocked_label(self) -> None:
+        # AC #1 + AC #7: only Todo+blocked counts; non-Todo blocked is ignored.
+        _seed_blocked_board(self.tmp, "p1", [
+            ("B-1", "Improvement", "Todo",     "qa", "dev-loop, Improvement, qa, blocked, needs-qa"),
+            ("B-2", "Bug",         "Todo",     "qa", "dev-loop, Bug, qa, blocked, needs-qa"),
+            ("B-3", "Feature",     "Todo",     "pm", "dev-loop, Feature, pm"),  # not blocked
+            ("B-4", "Feature",     "Canceled", "pm", "dev-loop, Feature, pm, blocked"),  # stale
+        ])
+        proj = find_project(self.tmp, "p1")
+        assert proj is not None
+        self.assertEqual(proj.blocked_count, 2)
+
+    def test_index_card_shows_n_blocked_when_nonzero(self) -> None:
+        # AC #1: card shows `N blocked` when count > 0.
+        _seed_blocked_board(self.tmp, "stuck", [
+            ("S-1", "Improvement", "Todo", "qa", "dev-loop, Improvement, qa, blocked, needs-qa"),
+        ])
+        html_out = render_index(discover_projects(self.tmp))
+        self.assertIn("1 blocked", html_out)
+
+    def test_index_card_pluralizes_with_count(self) -> None:
+        _seed_blocked_board(self.tmp, "stuck", [
+            ("S-1", "Improvement", "Todo", "qa", "dev-loop, Improvement, qa, blocked, needs-qa"),
+            ("S-2", "Bug",         "Todo", "qa", "dev-loop, Bug, qa, blocked, needs-qa"),
+            ("S-3", "Feature",     "Todo", "pm", "dev-loop, Feature, pm, blocked, needs-pm"),
+        ])
+        html_out = render_index(discover_projects(self.tmp))
+        self.assertIn("3 blocked", html_out)
+
+    def test_index_card_silent_when_zero_blocked(self) -> None:
+        # AC #2: zero is silent — no `0 blocked` chip, card stays clean.
+        _seed_blocked_board(self.tmp, "clean", [
+            ("C-1", "Feature",     "Todo",      "pm", "dev-loop, Feature, pm"),
+            ("C-2", "Bug",         "In Review", "qa", "dev-loop, Bug, qa"),
+            ("C-3", "Improvement", "Done",      "pm", "dev-loop, Improvement, pm"),
+        ])
+        html_out = render_index(discover_projects(self.tmp))
+        self.assertIn("clean", html_out)
+        self.assertNotIn("blocked", html_out)  # no chip, no class, no text
+
+    def test_index_card_silent_when_project_empty(self) -> None:
+        # An empty board has 0 tickets → 0 blocked; still no chip.
+        os.makedirs(os.path.join(self.tmp, "emptyproj", "board"), exist_ok=True)
+        html_out = render_index(discover_projects(self.tmp))
+        self.assertIn("emptyproj", html_out)
+        self.assertNotIn("blocked", html_out)
+
+    def test_blocked_count_ignores_canceled_with_stale_blocked_label(self) -> None:
+        # AC #7 (isolated): a Canceled ticket that still carries `blocked`
+        # (e.g. someone canceled without stripping the label) must NOT count.
+        _seed_blocked_board(self.tmp, "stale", [
+            ("X-1", "Feature", "Canceled",   "pm", "dev-loop, Feature, pm, blocked"),
+            ("X-2", "Bug",     "In Progress", "qa", "dev-loop, Bug, qa, blocked"),  # stranded mid-flight, not a queue blocker
+        ])
+        proj = find_project(self.tmp, "stale")
+        assert proj is not None
+        self.assertEqual(proj.blocked_count, 0)
+
+    def test_matches_dl_status_for_compliant_boards(self) -> None:
+        # AC #3: in a §9-conformant board (blocked label only on Todo tickets),
+        # the dashboard's count agrees with `tools/dl-status.py`'s `blocked` field.
+        _seed_blocked_board(self.tmp, "parity", [
+            ("P-1", "Feature",     "Todo",      "pm", "dev-loop, Feature, pm, blocked, needs-pm"),
+            ("P-2", "Bug",         "Todo",      "qa", "dev-loop, Bug, qa, blocked, needs-qa"),
+            ("P-3", "Improvement", "Todo",      "pm", "dev-loop, Improvement, pm"),
+            ("P-4", "Feature",     "In Review", "pm", "dev-loop, Feature, pm"),
+        ])
+        # Load dl-status.py the same way tests/test_dl_status.py does (hyphenated
+        # filename → can't be a plain import).
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "dl_status",
+            os.path.join(_REPO_ROOT, "tools", "dl-status.py"),
+        )
+        assert spec is not None and spec.loader is not None
+        dl_status = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(dl_status)
+
+        proj = find_project(self.tmp, "parity")
+        assert proj is not None
+        dl_summary = dl_status.summarize_project(proj)
+        self.assertEqual(proj.blocked_count, dl_summary["blocked"])
+        self.assertEqual(proj.blocked_count, 2)
+
+
 if __name__ == "__main__":
     unittest.main()
