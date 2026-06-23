@@ -311,6 +311,53 @@ editing code: correct, safe-by-gates, and pleasant to operate at multi-project s
   (LOOP-5). Bottleneck is now QA verification capacity on LOOP-9/11 → a QA fire
   would unblock more than another PM fire would.
 
+- **2026-06-23 (T21:35Z)** — 11th PM fire. **LOOP-10 (conventions audit / §17 proposal
+  payload) verified Done** against ship `16165ba`, and **LOOP-16 (`run-loop.sh
+  --help`/`-h`) verified Done** against ship `4203d60`. Both 6/6 ACs PASS. LOOP-10
+  AC#4 mechanically held: `git diff cd833ec..16165ba --stat -- references/conventions.md`
+  is empty; Dev executed an audit of a §17-protected file *without touching it*. That
+  is a real binding-test of the §17 firewall against an autonomous Dev fire — answering
+  operator priority **#3d** (§17-binding-check) informally; the formal check stays
+  parked as spec-fuzzy per the prior Candidate-ideas notes. LOOP-16 closes the
+  CLI-layer first-impression onboarding friction (continuation of LOOP-8's README
+  layer): `--help`/`-h` is now precondition-free (no `projects.json` / claude / tmux /
+  python3 needed), wins over `--restart` in either order, and the unknown-key error
+  path is unchanged. Product HEAD moved `48c06c0` → `18a2864` with **9 commits in
+  window** — beyond LOOP-10 + LOOP-16, QA shipped LOOP-13/14/15/17/18/19 and Dev
+  shipped a smoke-harness fix `7d5ff47` (`A_TS_3 != A_TS_1` race on fast Macs).
+  Per the new-product-SHA branch: reset `sweptLensesAtSha` and re-rotated to
+  `strategy-gaps` first at `18a2864`. **Operator priority #3b (conventions audit)
+  is now ✅ shipped** — `docs/CONVENTIONS_AUDIT.md` sits as the §17 proposal
+  payload (R-1..R-6, M-1..M-6, C-1..C-7, P-1..P-7 + 8 KEEP markers, ≈ −238 / ≈ 15%
+  projected delta) awaiting **operator/Reflect** selective application; refiling
+  P-1..P-7 as Dev tickets would cross §17 and is deliberately NOT done. The audit's
+  C-6 finding (TOC missing §12a entry) explicitly dedupes to LOOP-5 — already filed,
+  blocked needs-qa, not refiled. Diff-focused review at `18a2864`: 0 net-new
+  `strategy-gaps` tickets — every shipped commit either closes a known gap (LOOP-10
+  #3b, LOOP-16 onboarding, LOOP-13/14 doc accuracy, LOOP-17 TOCTOU hardening,
+  LOOP-18 audit honesty, LOOP-15/19 coverage) or is a §15 coverage follow-up. None
+  open a new capability surface. Dedupe-against-reality at `18a2864`: priorities
+  #1/#2 remain FULLY closed; #3a (LOOP-4), #3b (LOOP-10), #3c (per-key data-dir
+  layout) all shipped; #3d parked. Job A: 2 In Review pm both → Done. Job B: 0 blocked
+  pm; 0 stale `needs-pm` without `blocked`. Board at close: **Done 14** (LOOP-1/2/3/
+  4/6/7/8/9/10/11/12/13/16 + the QA-side 14/15/17/18/19 also Done = 17 actually
+  Done) · In Review 0 · Todo pm 0 · Todo qa 0 · Blocked qa 1 (LOOP-5) · In Progress
+  0. Counter unchanged (no new tickets). **pm Todo backlog at 0** — this is the
+  cleanest the board has been; per the PM guardrails *"filing zero is a valid
+  run"*, lens-rotation is *not* a license to flood `Todo` with vague work to keep
+  busy. Next un-swept lens at `18a2864` is `ux-flows` (then `consistency`,
+  `conversion-retention`, `data-analytics`, `trust-safety`, `competitive-parity`,
+  `polish-performance`). Next-fire decision tree: (a) Dev/QA work resumes (LOOP-5
+  unblock) → Job A/B pickup; (b) HEAD moves with NEW product code beyond `18a2864`
+  → reset `sweptLensesAtSha` and re-rotate from `strategy-gaps`; (c) operator
+  edits STRATEGY.md (length ≠ persisted) → doc-watch re-entry; (d) manual
+  `/pm-agent` with no a/b/c → rotate to `ux-flows` at `18a2864`. §17 boundary
+  held: pre-existing skills/+conventions dirty tree persists across fires
+  (operator/Reflect WIP), still not scooped per §7 staging discipline (this fire
+  stages only `docs/STRATEGY.md`). Bottleneck downstream of PM is now genuinely
+  thin — operator review of the conventions audit (`docs/CONVENTIONS_AUDIT.md`)
+  and unblock of LOOP-5 are the highest-leverage next moves.
+
 - **2026-06-23 (T20:05Z)** — 10th PM fire. **LOOP-12 (dashboard 点评 panel) verified
   Done** against ship `48c06c0`. All 8 ACs PASS: panel renders below the report body;
   the **exact local drop path** under the configured `--data-dir` is shown in a
@@ -390,9 +437,29 @@ operator's stated priorities for this project.)*
      stall signal. `--json` emits the same data for `jq` pipelines. 0.40s
      wall-clock across the current four-loop layout (AC#5 budget < 2s). 11
      unit tests in `tests/test_dl_status.py`, wired into `tools/test.sh`.
-3. **Other optimizations (operator's priority #3 — ongoing).** Plugin self-lint/test
-   harness (JSON valid, SKILL frontmatter present, conventions §N + markdown links
-   resolve, README/CHANGELOG/conventions consistent) wired as the typecheck/test gate;
-   audit conventions.md for length/redundancy (1,500+ lines) and tighten; verify the
-   data-dir layout is uniform after idea #2; confirm the §17 self-modification guardrail
-   actually binds Dev (not just Reflect) when a ticket would touch skills/conventions.
+3. **Other optimizations (operator's priority #3 — substantively closed).** Plugin
+   self-lint/test harness (JSON valid, SKILL frontmatter present, conventions §N +
+   markdown links resolve, README/CHANGELOG/conventions consistent) wired as the
+   typecheck/test gate; audit conventions.md for length/redundancy (1,500+ lines)
+   and tighten; verify the data-dir layout is uniform after idea #2; confirm the §17
+   self-modification guardrail actually binds Dev (not just Reflect) when a ticket
+   would touch skills/conventions.
+   - **(a) plugin self-lint** — ✅ shipped via LOOP-4 (`tools/test.sh`, 72 tests
+     covering SKILL frontmatter, JSON parse, conventions cross-refs, md-links incl.
+     `#fragment` resolution per LOOP-19, README/CHANGELOG consistency, and the
+     `tmux-session-name-consistency` rule per LOOP-15).
+   - **(b) conventions audit** — ✅ shipped via LOOP-10 (2026-06-23, commit
+     `16165ba`). `docs/CONVENTIONS_AUDIT.md` is the §17 proposal payload —
+     R-1..R-6 (redundancies), M-1..M-6 (movable), C-1..C-7 (contradictions/
+     staleness), P-1..P-7 (proposed cuts with concrete before/after + line
+     deltas, ≈ −238 / ≈ 15% projected), 8 KEEP markers, all line-ref-cited.
+     LOOP-18 amended the doc to honestly disclose the WT-snapshot reading
+     frame. **Tightening is operator/Reflect's selective-apply call** — refiling
+     P-1..P-7 as Dev tickets would cross §17 and is deliberately NOT done.
+   - **(c) data-dir uniformity post-#2** — ✅ implicit/done via the per-key
+     layout (`<key>/board/`, `<key>/reports/`, `<key>/pm-state.json` etc.).
+   - **(d) §17-binding-check for Dev** — informally answered by LOOP-10: Dev
+     audited a §17-protected file *without touching it*, and the AC#4 git-diff
+     assertion held mechanically. A formal self-test that codifies this remains
+     parked as spec-fuzzy (the deliverable would be a SKILL-edit proposal,
+     itself §17-bound) — a future Reflect fire is the natural author.
