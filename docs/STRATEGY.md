@@ -108,6 +108,27 @@ editing code: correct, safe-by-gates, and pleasant to operate at multi-project s
   79/79). Closes the CLI↔GUI parity gap surfaced under the `ux-flows` lens at
   `d12a4f0`; operator can now triage stalled loops at-a-glance without one click
   per project.
+- **README "Personal, persistent" install snippet fixed (LOOP-21, `9631a01`,
+  2026-06-23).** The settings.json snippet at L97-98 carried two correctness
+  defects: `"source": "local"` (rejected by Claude Code with `source.source:
+  Invalid input`, taking down the operator's entire settings.json + every other
+  plugin and hook), and `"path": "/path/to/parent-of-dev-loop"` (working
+  installs point at the plugin dir itself, which carries
+  `.claude-plugin/marketplace.json` with `source: "./"`). The Install
+  sub-section was restructured to lead with the **recommended** CLI path
+  (`claude plugin marketplace add /path/to/dev-loop` →
+  `claude plugin install dev-loop@dev-loop`, which writes the correct format
+  and validates), with the fixed `"source": "directory"` settings.json snippet
+  as the secondary "if you prefer to edit settings.json directly" form. A
+  permanence callout warns that a `directory` source must stay on disk —
+  deleting/moving it breaks every `/dev-loop:*` slash command the next time
+  Claude Code clears its marketplace metadata cache (the symptom on a headless
+  `claude -p` loop run is `Unknown command: …` for every dev-loop command, per
+  the `claude-code-local-marketplace-source` memory note). Coverage filed as
+  **LOOP-22** (`[coverage]` lint rule guarding `"source": "directory"` shape).
+  Closes the onboarding-correctness defect under the "Onboarding is a
+  near-no-op" goal — the same goal-shape as LOOP-8 (README opener), LOOP-14
+  (README §18 anchor), LOOP-16 (`run-loop.sh --help`).
 
 ## Personas
 
@@ -586,6 +607,41 @@ editing code: correct, safe-by-gates, and pleasant to operate at multi-project s
   → doc-watch re-entry; (d) manual `/pm-agent` with no a/b/c → rotate to
   **`conversion-retention`** at `3cac50c` (then `polish-performance`,
   `data-analytics`, `trust-safety`, `competitive-parity` — 5 remain).
+- **2026-06-23 T23:30Z — 16th PM fire (dev-loop):** decision-tree branches (a) +
+  (b) both fired this fire. (a) Dev shipped **LOOP-21** at HEAD `9631a01`
+  (README install snippet correctness fix) → PM Job A verified Done — all 6
+  ACs + the test gate (79/79) passed by walking the exact `grep` checklist
+  the ticket spec laid out + reading LOOP-22's frontmatter directly to confirm
+  the AC#6 coverage follow-up exists. (b) Effective product SHA moved
+  `3cac50c → 9631a01` (the 3 intervening commits `e9d09ae` / `0b979a0` /
+  `4d5e335` are this PM's own doc-only commits, which don't advance the
+  effective SHA per the §19-derived rule established on `citron-geo`) →
+  `sweptLensesAtSha` reset and rotation re-entered from `strategy-gaps`.
+  **`strategy-gaps` lens swept at `9631a01`: 0 filed.** Diff focus = README.md
+  only (+28/−3), no new capability surface opened. Dedupe-against-reality
+  re-confirms operator priorities #1 (dashboard parity) / #2 (multi-project)
+  fully closed, #3a (self-lint) / #3b (conventions audit) shipped, #3c
+  (data-dir uniformity) implicit/done, #3d (§17-binding-check) parked
+  Candidate. The new Onboarding-correctness ship (LOOP-21) closes a goal
+  bullet without opening a new one. **PM guardrail held — filing zero is a
+  valid run** (board healthy: 20 Done, 1 Todo qa-coverage LOOP-22, 1 Todo qa
+  blocked LOOP-5; 0 pickable pm Todo). Bottleneck downstream of PM is
+  unchanged: (i) operator review of `docs/CONVENTIONS_AUDIT.md` (LOOP-10's
+  §17 payload), (ii) QA unblock of LOOP-5, (iii) the 9-file
+  `skills/+references/+config-schema` operator WIP in the working tree (9th+
+  consecutive fire carrying — §17-protected, never scooped). §7 staging:
+  only `docs/STRATEGY.md` committed. §22 channel clean (0 `*.review.md`
+  siblings under `dev-loop/reports/pm-agent/`, PM `lessons.md` section
+  empty). Counter unchanged at **23** (no PM ticket allocated this fire).
+  Next-fire decision tree: (a) Dev picks LOOP-22 → In Review qa → QA Job A
+  pickup (cross-lane no PM motion); (b) QA unblocks LOOP-5 → Dev pickup
+  → eventual PM/QA verify; (c) operator commits the 9-file WIP → new
+  product SHA → reset `sweptLensesAtSha` and re-rotate; (d) operator edits
+  STRATEGY.md (length ≠ 49695 persisted) → doc-watch re-entry; (e) manual
+  `/pm-agent` with no a/b/c/d → rotate to **`ux-flows`** at `9631a01`
+  (then `consistency`, `conversion-retention`, `polish-performance`,
+  `data-analytics`, `trust-safety`, `competitive-parity` — 7 remain in
+  this fresh cycle).
 
 ## Candidate ideas
 
