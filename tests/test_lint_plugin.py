@@ -88,6 +88,17 @@ class TestLintPluginNegative(unittest.TestCase):
         # in the target file.
         self.assert_rule_found("mdlinkfrag", "md-link-fragments")
 
+    def test_extramarketplace_source_discriminator(self):
+        # Catches the LOOP-22 → LOOP-21 class of doc-vs-install drift:
+        # a fenced JSON snippet under an `extraKnownMarketplaces` key whose
+        # inner `"source"` uses a token outside the Claude-Code-accepted
+        # set. The fixture carries the LOOP-21 pre-fix `"source": "local"`
+        # shape, which makes Claude Code reject the whole settings.json
+        # on startup.
+        self.assert_rule_found(
+            "extramarketplace", "extramarketplace-source-discriminator"
+        )
+
 
 class TestLintPluginPositive(unittest.TestCase):
     """The lint must exit zero on the real repo (LOOP-4 AC #9)."""

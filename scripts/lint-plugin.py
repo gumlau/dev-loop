@@ -37,6 +37,13 @@ Rules (one per AC in LOOP-4):
                       in the target file, by GitHub-flavored slug — sibling
                       of md-links (path-existence) for the slug side
                       (LOOP-19, follow-up to LOOP-14 AC#4)
+  extramarketplace-source-discriminator
+                      fenced JSON snippets carrying `"extraKnownMarketplaces"`
+                      use only the Claude Code-accepted `source`
+                      discriminators (`directory` / `github` / `npm`); and
+                      where the snippet uses `"source": "directory"`, its
+                      surrounding H2 section MUST mention
+                      `.claude-plugin/marketplace.json` (LOOP-22 → LOOP-21)
 
 §17 boundary: this script is a READ-ONLY detector. It NEVER edits
 references/conventions.md or any skills/*/SKILL.md — findings about those
@@ -497,6 +504,163 @@ def _heading_slugs(text: str) -> set[str]:
     return slugs
 
 
+# Inside a fenced block carrying the literal `"extraKnownMarketplaces"`
+# key, find every `"source": "<token>"` and validate the token against the
+# Claude Code marketplace source discriminator set (`directory`, `github`,
+# `npm`). A wrong token here is load-bearing damage: Claude Code rejects
+# the operator's whole `~/.claude/settings.json` on startup
+# (`source.source: Invalid input`), disabling every plugin and hook —
+# the exact LOOP-21 regression. Inner-most `"source"` matches only string
+# values, so the outer `"source": { ... }` wrapper that the discriminator
+# nests inside doesn't false-trigger.
+_EKM_BLOCK_NEEDLE = '"extraKnownMarketplaces"'
+_EKM_SOURCE_TOKEN = re.compile(r'"source"\s*:\s*"([^"]+)"')
+_EKM_ACCEPTED = frozenset({"directory", "github", "npm"})
+# Paragraph-local allow-list — a fenced bad shape wrapped in an explicit
+# anti-pattern callout is the operator DESCRIBING the bug (e.g. an Avoid
+# section), not committing it. Case-insensitive paragraph scan; same
+# shape as LOOP-15's tmux rule.
+_EKM_ALLOW_KEYWORDS = (
+    "don't",
+    "never",
+    "rejected",
+    "invalid input",
+    "anti-pattern",
+    "wrong",
+)
+_EKM_ALLOW_MARKER = "<!-- lint:extramarketplace-allow -->"
+_EKM_MARKETPLACE_JSON = ".claude-plugin/marketplace.json"
+
+
+def _ekm_pre_para_lower(lines: list[str], fence_open: int) -> str:
+    """Lowercased text of the paragraph immediately preceding the fence
+    at `fence_open` (0-indexed). Skips blank lines, then walks back to
+    the previous blank line (or the file start)."""
+    end = fence_open
+    while end > 0 and lines[end - 1].strip() == "":
+        end -= 1
+    start = end
+    while start > 0 and lines[start - 1].strip() != "":
+        start -= 1
+    return "\n".join(lines[start:end]).lower()
+
+
+def _ekm_section_lower(lines: list[str], anchor: int) -> str:
+    """Lowercased text of the Markdown H2 section that contains `lines[anchor]`
+    (0-indexed). Section bounds: the nearest preceding `## ` heading
+    through (but not including) the next `## ` heading, falling back to
+    file bounds. Used for the AC's path-correctness sub-check (the
+    `.claude-plugin/marketplace.json` callout MUST appear somewhere in
+    the same section as the snippet)."""
+    n = len(lines)
+    start = anchor
+    while start > 0 and not lines[start - 1].startswith("## "):
+        start -= 1
+    end = anchor + 1
+    while end < n and not lines[end].startswith("## "):
+        end += 1
+    return "\n".join(lines[start:end]).lower()
+
+
+def check_extramarketplace_source_discriminator(root: Path) -> list[Finding]:
+    """Scan fenced JSON snippets in README.md, CHANGELOG.md, docs/*.md,
+    references/*.md, and skills/*/SKILL.md for the LOOP-21 class of
+    settings.json-breakage. Two finding-shapes under one rule prefix:
+
+      1. Wrong source discriminator — `"source": "<not directory|github|npm>"`
+         inside an `extraKnownMarketplaces` block. (Specifically catches
+         the LOOP-21 token `"source": "local"`.)
+      2. Path-correctness — `"source": "directory"` whose surrounding H2
+         section does NOT mention `.claude-plugin/marketplace.json`,
+         because the path must point at the dir that carries one.
+
+    Shared allow-list (kept narrow so false-positives stay at zero on the
+    current repo):
+      - `<!-- lint:extramarketplace-allow -->` on the line above the
+        fence-opener OR the line above the offending token, OR
+      - the paragraph immediately preceding the fence contains
+        anti-pattern keywords ("don't" / "never" / "rejected" /
+        "Invalid input" / "anti-pattern" / "wrong").
+    """
+    findings: list[Finding] = []
+    targets: list[Path] = []
+    for name in ("README.md", "CHANGELOG.md"):
+        f = root / name
+        if f.exists():
+            targets.append(f)
+    for sub in ("docs", "references"):
+        d = root / sub
+        if d.exists():
+            targets += sorted(d.glob("*.md"))
+    skills_dir = root / "skills"
+    if skills_dir.exists():
+        targets += sorted(skills_dir.glob("*/SKILL.md"))
+
+    for t in targets:
+        lines = _read_text(t).splitlines()
+        n = len(lines)
+        i = 0
+        while i < n:
+            if not lines[i].lstrip().startswith("```"):
+                i += 1
+                continue
+            fence_open = i
+            j = i + 1
+            block_lines: list[tuple[int, str]] = []
+            while j < n and not lines[j].lstrip().startswith("```"):
+                block_lines.append((j, lines[j]))
+                j += 1
+            block_text = "\n".join(bl for _, bl in block_lines)
+            if _EKM_BLOCK_NEEDLE in block_text:
+                pre_para_lower = _ekm_pre_para_lower(lines, fence_open)
+                para_allow = any(
+                    kw in pre_para_lower for kw in _EKM_ALLOW_KEYWORDS
+                )
+                marker_above_fence = (
+                    fence_open >= 1
+                    and _EKM_ALLOW_MARKER in lines[fence_open - 1]
+                )
+                section_mentions_mkp = (
+                    _EKM_MARKETPLACE_JSON in _ekm_section_lower(lines, fence_open)
+                )
+                for line_idx, bl in block_lines:
+                    for m in _EKM_SOURCE_TOKEN.finditer(bl):
+                        tok = m.group(1)
+                        marker_above_line = (
+                            line_idx - 1 >= 0
+                            and _EKM_ALLOW_MARKER in lines[line_idx - 1]
+                        )
+                        allowed = (
+                            para_allow or marker_above_fence or marker_above_line
+                        )
+                        if tok not in _EKM_ACCEPTED:
+                            if allowed:
+                                continue
+                            findings.append(
+                                f"extramarketplace-source-discriminator: "
+                                f"{_rel(t, root)}:{line_idx + 1} "
+                                f'`"source": "{tok}"` inside an '
+                                f"`extraKnownMarketplaces` block — Claude "
+                                f"Code accepts only `directory`, `github`, "
+                                f"or `npm`; any other token makes it reject "
+                                f"the whole settings.json on startup "
+                                f"(LOOP-21)."
+                            )
+                        elif tok == "directory" and not section_mentions_mkp:
+                            if allowed:
+                                continue
+                            findings.append(
+                                f"extramarketplace-source-discriminator: "
+                                f"{_rel(t, root)}:{line_idx + 1} "
+                                f'`"source": "directory"` needs a '
+                                f"`.claude-plugin/marketplace.json` in the "
+                                f"path; the snippet's surrounding section "
+                                f"doesn't say so (LOOP-21 path-correctness)."
+                            )
+            i = j + 1  # past the closing fence (or EOF)
+    return findings
+
+
 def check_md_link_fragments(root: Path) -> list[Finding]:
     """For each `[text](path#fragment)` link in the docs set, validate that
     `#fragment` resolves to a `## <heading>` (or deeper) in the target
@@ -580,6 +744,7 @@ RULES: list[Callable[[Path], list[Finding]]] = [
     check_shell_example_syntax,
     check_tmux_session_name_consistency,
     check_md_link_fragments,
+    check_extramarketplace_source_discriminator,
 ]
 
 
