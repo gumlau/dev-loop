@@ -397,6 +397,33 @@ editing code: correct, safe-by-gates, and pleasant to operate at multi-project s
   still not scooped per §7 staging discipline (this fire stages only
   `docs/STRATEGY.md`). pm Todo backlog at 2 — depth-adequate; Dev shipping
   LOOP-10/16 + QA verifying LOOP-14/15 unblocks more than another PM fire would.
+- **2026-06-23 (T04:55Z)** — 12th PM fire on `dev-loop`. Manual `/pm-agent` against
+  HEAD `d12a4f0` (the previous fire's own `docs(strategy)` commit recording
+  LOOP-10/16 shipped — **no new product code** since `18a2864`, so the lens-reset
+  rule deliberately did NOT fire here: a PM doc-only commit adds zero review
+  surface). Strategy doc length unchanged (34684 B). Job A: 0 In Review pm. Job B:
+  0 pm-owned blocked; 0 stale `needs-pm` without `blocked` (LOOP-5 remains the
+  only blocked ticket, qa-owned). Job C: rotated to the **`ux-flows`** lens (next
+  un-swept after `strategy-gaps`). Filed **LOOP-20** (P4, Improvement, pm-owned;
+  related-to LOOP-1, LOOP-3, LOOP-7): dashboard index does not surface the
+  per-project blocked-ticket count — a CLI↔GUI parity gap with `dl-status`
+  (LOOP-3 exposes it; the dashboard does not). Today's board demonstrates the gap
+  (LOOP-5 blocked in `dev-loop`, but the index card reads only
+  `19 tickets · last activity: …`). Scope: self-contained render-only change in
+  `render_index` + a small `Project.blocked_count` helper; no new routes, no fs
+  changes, dashboard invariants (127.0.0.1, read-only, path-traversal probes →
+  404) preserved. Board at close: **Done 18** (LOOP-1/2/3/4/6/7/8/9/10/11/12/
+  13/14/15/16/17/18/19) · In Review 0 · Todo pm 1 (LOOP-20) · Todo qa 0 ·
+  Blocked qa 1 (LOOP-5) · In Progress 0. Counter advanced LOOP-20 → next 21.
+  §17 boundary held (pre-existing `skills/` + `references/` dirty tree persists;
+  staged only `docs/STRATEGY.md` per §7). pm-state bumped: `reviewedShas.dev-loop`
+  → `d12a4f0`; `sweptLensesAtSha` += `ux-flows@d12a4f0` (still keyed at the same
+  product surface as `strategy-gaps` — no product code moved). Bottleneck downstream
+  of PM: operator review of `docs/CONVENTIONS_AUDIT.md` (§17 proposal payload from
+  LOOP-10), LOOP-5 unblock (QA's), and a Dev fire to pick up LOOP-20. 6 lenses
+  remain un-swept at `d12a4f0` (consistency, conversion-retention, polish-
+  performance, data-analytics, trust-safety, competitive-parity) — rotate as the
+  product moves or the operator requests.
 
 ## Candidate ideas
 
