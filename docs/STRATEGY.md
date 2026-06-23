@@ -477,6 +477,64 @@ editing code: correct, safe-by-gates, and pleasant to operate at multi-project s
   performance, data-analytics, trust-safety, competitive-parity) — rotate as the
   product moves or the operator requests.
 
+- **2026-06-23 (T17:05Z)** — 14th PM fire on `dev-loop`. Manual `/pm-agent` against
+  HEAD `0b979a0` (the 13th fire's own `docs(strategy)` commit recording LOOP-20
+  verified Done + `strategy-gaps` swept clean at `3cac50c` — **no new product
+  code** since `3cac50c`, so the lens-reset rule deliberately did NOT fire here:
+  a PM doc-only commit adds zero review surface). Strategy doc length unchanged
+  at 40845 B (matches the 13th fire's own commit `0b979a0` — no operator edit
+  detected). Persistence drift on fire-open: `pm-state.json` was 4 fires stale
+  (`reviewedShas.dev-loop = 9ab48c1`, mixed `sweptLensesAtSha` from 11th+12th
+  fires) — reconciled from ground truth (git log + Decisions journal + ticket
+  files; same recovery shape the 13th fire used).
+  Job A: 0 In Review pm-owned. Job B: 0 pm-owned blocked; 0 stale `needs-pm`
+  without `blocked` (LOOP-5 remains the only blocked ticket, `qa`-owned via
+  `needs-qa` — not mine).
+  Job C — rotated to the predicted-(d) next-un-swept lens: **`ux-flows` at
+  `3cac50c`**. Exercised every operator-facing surface the plugin has — the
+  dashboard (index + per-project kanban + report page), the status CLI
+  (`tools/dl-status.py`), the launcher (`scripts/run-loop.sh`), and the docs.
+  Comparing dashboard-index render at `3cac50c` against `dl-status` output:
+  the index card now exposes `N blocked` (LOOP-20) and `last activity`, but
+  not `oldestTodo` age or `staleIR>24h` count — the two OTHER stall signals
+  `dl-status` exposes. That is the same CLI↔GUI parity shape LOOP-20 closed
+  for `blocked`, applied to the remaining two signals. Assessment: **marginal
+  / NOT filed this fire** — (1) the per-project kanban already surfaces every
+  ticket's age on its card, so drilling one click already gives the operator
+  oldest-Todo info; (2) the per-project page's "stuck ≥3 days" callout
+  (LOOP-7) is a stricter version of `staleIR>24h` already; (3) filing it now
+  would pad `Todo` against the empty-backlog steady state when the genuine
+  bottleneck is downstream (operator/Reflect review of
+  `docs/CONVENTIONS_AUDIT.md` and QA unblock of LOOP-5). Recorded as
+  Candidate idea **#4** for the operator to opt in later. Other `ux-flows`
+  surfaces examined and de-prioritized the same way as prior `ux-flows`
+  sweeps (report-page prev/next-day, idle-today → last-non-idle-day link,
+  dashboard surfacing agent logs) — unchanged from the 9th/12th-fire notes.
+  **0 net-new tickets filed** — same posture as the 13th fire predicted
+  (the (d) branch of its decision tree). Per PM guardrails *"filing zero is
+  a valid run"*, this is the right call.
+  Board at close (identical to 13th fire close): Done **19** (LOOP-1/2/3/4/
+  6/7/8/9/10/11/12/13/14/15/16/17/18/19/20) · In Review 0 · In Progress 0
+  · Todo pm 0 · Todo qa 0 · Blocked qa 1 (LOOP-5) · counter 21 unchanged.
+  §17 boundary held: pre-existing `skills/` + `references/` dirty tree
+  (9 substantive files, operator/Reflect WIP) persists across fires, still
+  not scooped per §7 staging discipline — this fire stages only
+  `docs/STRATEGY.md`. `pm-state.json` rewritten atomically (temp + rename,
+  §11) with corrected ground truth: `reviewedShas.dev-loop = 3cac50c`,
+  `sweptLensesAtSha = {strategy-gaps@T13:30Z, ux-flows@T17:05Z}`,
+  `docWatch.strategyDocLength = <post-this-commit-length>`. §22 channel
+  clean — 0 `*.review.md` siblings, PM `lessons.md` section empty, no
+  operator 点评 to distill. Next-fire decision tree (unchanged): (a) Dev/QA
+  resumes; (b) new product code beyond `3cac50c` → reset and re-rotate
+  from `strategy-gaps`; (c) operator edits STRATEGY.md (length ≠ persisted)
+  → doc-watch re-entry; (d) manual `/pm-agent` with no a/b/c → rotate to
+  **`consistency`** at `3cac50c` (then `conversion-retention`,
+  `polish-performance`, `data-analytics`, `trust-safety`,
+  `competitive-parity` — 6 remain un-swept). Bottleneck downstream of PM
+  is unchanged: **operator review of `docs/CONVENTIONS_AUDIT.md`** (the §17
+  proposal payload from LOOP-10) and **QA unblock of LOOP-5** are the
+  highest-leverage next moves.
+
 ## Candidate ideas
 
 *(PM's parking lot — filed as tickets as the backlog drains. The first three are the
@@ -542,3 +600,17 @@ operator's stated priorities for this project.)*
      assertion held mechanically. A formal self-test that codifies this remains
      parked as spec-fuzzy (the deliverable would be a SKILL-edit proposal,
      itself §17-bound) — a future Reflect fire is the natural author.
+4. **Dashboard index — extend the LOOP-20 stall-signal parity to the remaining
+   two `dl-status` columns (`oldestTodo`, `staleIR>24h`).** Surfaced under the
+   `ux-flows` lens on the 14th PM fire (2026-06-23 T17:05Z, at `3cac50c`).
+   Today the dashboard index card renders `N tickets`, `N blocked` (LOOP-20),
+   and `last activity`; the parity gap to `dl-status` is exactly the two other
+   stall-signal columns. **Deliberately parked, not filed**: (a) the
+   per-project kanban already shows each ticket's age on its card, so the
+   operator can read oldest-Todo with one click; (b) the per-project page's
+   "stuck ≥3 days" callout (LOOP-7) is a stricter version of `staleIR>24h`;
+   (c) filing it against an empty `Todo pm` is exactly the kind of "padding
+   the backlog with marginal work" the PM guardrails warn against, while the
+   genuine bottleneck downstream is operator review of `CONVENTIONS_AUDIT.md`
+   and QA unblock of LOOP-5. File only on explicit operator opt-in, or if a
+   stall signal goes un-noticed because the dashboard didn't surface it.
