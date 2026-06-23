@@ -1,0 +1,26 @@
+{
+  "name": "dev-loop-local",
+  "owner": {
+    "name": "Shuai"
+  },
+  "metadata": {
+    "description": "Local marketplace for dev-loop — eight autonomous PM/QA/Dev/Sweep/Reflect/Ops/Architect/Signal agents coordinated through Linear ticket state.",
+    "version": "0.10.0"
+  },
+  "plugins": [
+    {
+      "name": "dev-loop",
+      "source": "./",
+      "description": "Eight autonomous agents that run a software-development loop coordinated entirely through Linear ticket state.",
+      "version": "0.10.0",
+      "author": {
+        "name": "Shuai"
+      },
+      "homepage": "https://github.com/gumlau/dev-loop",
+      "repository": "https://github.com/gumlau/dev-loop",
+      "keywords": ["linear", "agents", "pm", "qa", "dev", "automation", "sdlc", "workflow"],
+      "skills": "./skills/",
+      "license": "MIT"
+    }
+  ]
+}
