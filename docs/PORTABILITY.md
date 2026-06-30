@@ -108,7 +108,7 @@ PROMPT="$(sed '1{/^---$/!q};1,/^---$/d' "$CLAUDE_PLUGIN_ROOT/skills/$AGENT-agent
   | sed "s|\${CLAUDE_PLUGIN_ROOT}|$CLAUDE_PLUGIN_ROOT|g; s|\${CLAUDE_PLUGIN_DATA}|$CLAUDE_PLUGIN_DATA|g")"
 
 # then, per CLI (⚠️ VERIFY the exact run flags):
-#   Claude Code: claude -p "$PROMPT"           (or /loop for a cadence)
+#   Claude Code: claude -p "$PROMPT"
 #   Codex:       codex exec "$PROMPT"
 #   opencode:    opencode run "$PROMPT"
 ```
@@ -119,9 +119,10 @@ For the PR/media article writer, call the same wrapper with `communication`:
 ./launch-agent.sh communication <project>
 ```
 
-Loop cadence (re-fire every N minutes) is the operator's launcher concern (cron / a `while sleep`
-wrapper / the CLI's own loop facility) — the agents are **stateless per fire**, so a loop is just
-"run the wrapper again". No agent hard-requires a Claude-Code-only tool; Bash/Read/Edit are
+Loop cadence (re-fire every N minutes) is the operator's launcher concern — the OS scheduler
+(`dev-loop service`) or the `dev-loop run` supervisor own it; a bare wrapper can also be re-fired by
+cron / a `while sleep` loop. The agents are **stateless per fire**, so a loop is just "run the
+wrapper again". No agent hard-requires a Claude-Code-only tool; Bash/Read/Edit are
 near-universal — confirm your CLI exposes them.
 
 > The old `install-codex-prompts` / `~/.codex/prompts/*.md` compatibility layer was **removed in
