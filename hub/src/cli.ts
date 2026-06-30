@@ -23,6 +23,7 @@ const ROUTES: Record<string, [string, ...string[]]> = {
   doctor:           ["server", "doctor"],
   seed:             ["seed"],
   run:              ["run-agents"],                // scheduler: own cadence + shells out to claude/codex once per fire
+  service:          ["service-install"],           // generate+install OS scheduler units (launchd/systemd/cron) firing `run --once`
   "install-claude-plugin": ["install-claude-plugin"], // register a local npm-source marketplace so Claude Code loads the published plugin
   "init-service":   ["init-service"],              // turnkey bootstrap (DL-60)
   "mcp-merge":      ["mcp-merge"],                 // merge into a product .mcp.json, never clobbers (DL-61)
@@ -50,6 +51,8 @@ Usage: dev-loop <command> [args]
   daemon up|down|status       per-project daemon lifecycle — idempotent, auto-starts the localhost web UI
   init-service <key> <name> <PREFIX>   turnkey-bootstrap a service-backend project (seed → doctor → daemon up)
   run --cli claude|codex [--project <key>] [--agents core,outward]   schedule agents by calling the selected CLI
+  service install|uninstall|status|list [--project <key>] [--cli claude|codex] [--agents core] [--dry-run]
+                              install/remove OS scheduler units (launchd/systemd/cron) that fire 'run --once' per agent
   install-claude-plugin      register a local npm-source marketplace so /plugin install can load it
   mcp-merge <args>            merge dev-loop-hub into a product .mcp.json (never clobbers other servers)
   seed <key> <name> [PREFIX]  seed a project + actors + labels into the hub db

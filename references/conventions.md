@@ -1685,7 +1685,7 @@ a `Canceled` `review failed:` ticket.
   `docs/design/senior-junior-dev-split.md`.
 - **Models** (`config-schema.md`, launcher-applied): `senior-dev: claude-opus-4-8`,
   `junior-dev: claude-sonnet-4-6`. `dev` keeps the launcher's opus default.
-- **Launcher** (`run-loop.sh`): an opt-in split knob replaces the single `dev` pane with a `senior-dev`
+- **Launcher** (`dev-loop run --dev-split`, or any per-pane launcher): an opt-in split knob replaces the single `dev` pane with a `senior-dev`
   pane (opus, effort `max`) + a `junior-dev` pane (sonnet, effort `high`); the legacy `dev` pane stays
   available when the knob is off. Other effort tiers unchanged (`pm=max`, `reflect/architect=xhigh`,
   `qa/sweep=high`).

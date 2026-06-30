@@ -170,7 +170,7 @@ repo, its test environment, and its ship/deploy settings. One file, many product
   when absent. It writes no new config keys.
 - **`models`** (optional): a per-agent model map the **launcher** applies at session
   start (`claude --model <m> …`) — the model is a *launch-time* choice, not something a
-  SKILL sets, so this is consumed by `run-loop.sh` / your launch command, not by the
+  SKILL sets, so this is consumed by `dev-loop run` / your launch command, not by the
   agents. **The default is `opus` for EVERY agent** (the launcher applies `--model opus`
   per pane unless you override) — maximize correctness across the whole loop. Tune an
   agent **down** (`sonnet`/`haiku`) only to economize — e.g. the mechanical/high-frequency
@@ -181,7 +181,7 @@ repo, its test environment, and its ship/deploy settings. One file, many product
   `pm=max` and `dev=max` (legacy single dev) reason deepest; `reflect`/`architect`=`xhigh`;
   `qa`/`sweep`=`high`.
 - **Two-tier Dev** (`senior-dev` / `junior-dev`; conventions §21a): an opt-in split of the single
-  Dev role, enabled at LAUNCH by the launcher knob (`DEV_SPLIT=1` in `run-loop.sh`) — it replaces
+  Dev role, enabled at LAUNCH by the launcher knob (`dev-loop run --dev-split`, or `devSplit:true`) — it replaces
   the single `dev` pane with two panes: a **`senior-dev`** pane (`claude-opus-4-8`, effort **max**)
   that designs-and-delegates new modules/features and direct-codes escalations, and a
   **`junior-dev`** pane (`claude-sonnet-4-6`, effort **high**) that implements pre-designed tickets

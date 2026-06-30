@@ -19,7 +19,7 @@ import { openDb } from "./db.ts";
 import { findProject } from "./seed.ts";
 import { loadProjectsConfig, resolveProjectFromCwd } from "./resolve-project.ts";
 
-interface RunInfo { project: string; pid: number; port: number; host: string; url: string; startedAt: string; }
+export interface RunInfo { project: string; pid: number; port: number; host: string; url: string; startedAt: string; }
 
 // The runfile lives next to the hub DB (machine-local, never committed — ~/.dev-loop by default), one
 // file per project so distinct projects never clobber each other. DEVLOOP_RUN_DIR overrides for tests.
@@ -124,6 +124,13 @@ function lcPortFor(key: string): number {
   for (let i = 0; i < key.length; i++) { h ^= key.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
   return 20000 + (h % 20000); // 20000–39999: clear of the registered-port crush and the 8787 default
 }
+
+// Public reuse surface for the OS-service layer (service-install.ts) and the service-owned daemon boot:
+// the SAME deterministic per-project port + runfile dir + runfile writer the lifecycle uses, so a
+// launchd/systemd-supervised foreground daemon stays coherent with `dev-loop daemon status/down`.
+export function portForProject(key: string): number { return lcPortFor(key); }
+export function daemonRunDir(): string { return lcRunDir(); }
+export function writeDaemonRunfile(info: RunInfo): void { lcWriteRun(info); }
 function lcIsAlive(pid: number): boolean {
   if (!pid || pid <= 0) return false;
   try { process.kill(pid, 0); return true; } catch (e) { return (e as { code?: string }).code === "EPERM"; }
